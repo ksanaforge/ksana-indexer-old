@@ -67,23 +67,6 @@ var putPage=function(inscription) {
 	session.indexedTextLength+= inscription.length;
 	return tovpos;
 }
-var upgradeDocument=function(d,dnew) {
-	var Diff=nodeRequire("./diff");	
-	dnew.map(function(pg){
-		var oldpage=d.pageByName(pg.name);
-		var ninscription=dnew.inscription;
-		if (oldpage) {
-			var diff=new Diff();
-			var oinscription=oldpage.inscription;
-			var df=diff.diff_main(oinscription, pg.inscription);
-
-			var revisioncount=oldpage.addRevisionsFromDiff(df);
-			if (revisioncount) d.evolvePage(oldpage);
-		} else {
-			d.createPage({n:pgname,t:ninscription});
-		}
-	});	
-}
 var shortFilename=function(fn) {
 	var arr=fn.split('/');
 	while (arr.length>2) arr.shift();
@@ -160,29 +143,11 @@ var putPages=function(doc,parsed,cb) {
 	if (!hasRevert) delete fileInfo["reverts"];
 	cb(parsed);//finish
 }
-var putDocument=function(parsed,cb) {
-	if (session.kdb) { //update an existing kdb
-		var D=nodeRequire("./document");
-		var dnew=D.createDocument(parsed.texts);
-		session.kdb.getDocument(status.filename,function(d){
-			if (d) {
-				upgradeDocument(d,dnew);
-				putPages(d,parsed,cb);
-				status.pageCount+=d.pageCount-1;
-			} else { //no such page in old kdb
-				putPages(dnew,parsed,cb);
-				status.pageCount+=dnew.pageCount-1;
-			}
-		});
-	} else {
-		putPages_new(parsed,cb);
-		status.pageCount+=parsed.texts.length;//dnew.pageCount;
-	}
-}
 
 var parseBody=function(body,sep,cb) {
 	var res=xml4kdb.parseXML(body, {sep:sep,trim:!!session.config.trim});
-	putDocument(res,cb);
+	putPages_new(res,cb);
+	status.pageCount+=res.texts.length;//dnew.pageCount;
 }
 
 var pat=/([a-zA-Z:]+)="([^"]+?)"/g;
@@ -287,19 +252,8 @@ var processTags=function(captureTags,tags,texts) {
 		}	
 	}
 }
-var resolveTagsVpos=function(parsed) {
-	var bsearch=nodeRequire("ksana-document").bsearch;
-	for (var i=0;i<parsed.tags.length;i++) {
-		for (var j=0;j<parsed.tags[i].length;j++) {
-			var t=parsed.tags[i][j];
-			var pos=t[0];
-			t[3]=parsed.tovpos[i][pos];
-			while (pos && typeof t[3]=="undefined") t[3]=parsed.tovpos[i][--pos];
-		}
-	}
-}
 var putFile=function(fn,cb) {
-	var fs=nodeRequire("fs");
+	var fs=require("fs");
 	if (!fs.existsSync(fn)){
 		if (fn) console.warn("file ",fn,"doens't exist");
 		cb();
@@ -340,7 +294,6 @@ var putFile=function(fn,cb) {
 	parseBody(body,session.config.pageSeparator,function(parsed){
 		status.parsed=parsed;
 		if (callbacks.afterbodyend) {
-			resolveTagsVpos(parsed);
 			if (captureTags) {
 				processTags(captureTags, parsed.tags, parsed.texts);
 			}
@@ -458,8 +411,9 @@ var createMeta=function() {
 	}
 	meta.name=session.config.name;
 	meta.vsize=session.vpos;
-	meta.pagecount=status.pageCount;
-	meta.version=0x20141126;
+	meta.pageCount=status.pageCount;
+	meta.version="2015.1.5";
+	meta.buildDate=(new Date()).toString();
 	return meta;
 }
 var guessSize=function() {
@@ -467,7 +421,7 @@ var guessSize=function() {
 	if (size<1024*1024) size=1024*1024;
 	return  size;
 }
-var buildpostingslen=function(tokens,postings) {
+var buildpostingsLength=function(tokens,postings) {
 	var out=[];
 	for (var i=0;i<tokens.length;i++) {
 		out[i]=postings[i].length;
@@ -483,7 +437,7 @@ var optimize4kdb=function(json) {
 	var newtokens=keys.map(function(k){return k[0]});
 	json.tokens=newtokens;
 	for (var i=0;i<json.postings.length;i++) json.postings[i].sorted=true; //use delta format to save space
-	json.postingslen=buildpostingslen(json.tokens,json.postings);
+	json.postingsLength=buildpostingsLength(json.tokens,json.postings);
 	json.fileOffsets.sorted=true;
 	json.pageOffsets.sorted=true;
 

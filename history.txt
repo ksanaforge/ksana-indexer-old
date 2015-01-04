@@ -1,0 +1,8 @@
+last version in ksana-document 0x20141126 
+in ksana-indexer
+meta.version is a string
+
+2015.1.5 
+rename postingsLen to postingLength
+add meta.buildDate
+rename meta.pagecount to meta.pageCount
