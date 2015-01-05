@@ -1,4 +1,3 @@
-if (typeof nodeRequire=='undefined')nodeRequire=require;
 
 var tags=[];
 var tagstack=[];
@@ -65,18 +64,7 @@ var parseXML=function(buf, opts){
 	});
 	return {texts:texts,tags:tags,sep:sep};
 };
-var D=nodeRequire("ksana-document").document;
 
-var importJson=function(json) {
-	d=D.createDocument();
-	for (var i=0;i<json.texts.length;i++) {
-		var markups=json.tags[i];
-		d.createPage(json.texts[i]);
-	}
-	//d.setRawXMLTags(json.tags);
-	d.setSep(json.sep);
-	return d;
-}
 /*
     doc.tags hold raw xml tags, offset will be adjusted by evolvePage.
     should not add or delete page, otherwise the export XML is not valid.
@@ -145,4 +133,4 @@ var exportXML=function(doc,originalrawtags){
 
 	return out.join("");
 };
-module.exports={parseXML:parseXML, importJson:importJson, exportXML:exportXML}
+module.exports={parseXML:parseXML, exportXML:exportXML}

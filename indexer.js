@@ -342,7 +342,7 @@ var initIndexer=function(mkdbconfig) {
 	tokenize=api["tokenize"];
 
 	var folder=session.config.outdir||".";
-	session.kdbfn=nodeRequire("path").resolve(folder, session.config.name+'.kdb');
+	session.kdbfn=require("path").resolve(folder, session.config.name+'.kdb');
 
 	setTimeout(indexstep,1);
 }
@@ -392,8 +392,8 @@ var backupFilename=function(ydbfn) {
 }
 
 var backup=function(ydbfn) {
-	var fs=nodeRequire("fs");
-	var fs=nodeRequire('fs');
+	var fs=require("fs");
+	var fs=require('fs');
 	if (fs.existsSync(ydbfn)) {
 		var bkfn=ydbfn+'k';
 		try {
@@ -457,6 +457,7 @@ var finalize=function(cb) {
 	status.message='writing '+session.kdbfn;
 	//output=api("optimize")(session.json,session.ydbmeta.config);
 	var opts={size:session.config.estimatesize};
+
 	if (!opts.size) opts.size=guessSize();
 	var kdbw =requireLocal("ksana-indexer").kdbw(session.kdbfn,opts);
 	//console.log(JSON.stringify(session.json,""," "));
