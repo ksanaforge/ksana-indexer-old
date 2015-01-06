@@ -18,14 +18,20 @@ var parseXMLTag=function(s) {
 	if (!count) attr=undefined;
 	return {name:name,type:type,attr:attr};
 };
-var parseUnit=function(unittext) {
+var parseBlock=function(blocktext) {
 	// name,sunit, soff, eunit, eoff , attributes
 	var totaltaglength=0,tags=[],tagoffset=0;
-	var parsed=unittext.replace(/<(.*?)>/g,function(m,m1,off){
+	var parsed=blocktext.replace(/<(.*?)>/g,function(m,m1,off){
 		var i=m1.indexOf(" "),tag=m1,attributes="";
 		if (i>-1) {
 			tag=m1.substr(0,i);
 			attributes=m1.substr(i+1);
+		}else{ //handle <p/>
+			i=m1.indexOf("/");
+			if (i>0) {
+				tag=m1.substr(0,i);
+				attributes="/";
+			}
 		}
 		tagoffset=off-totaltaglength;
 		tags.push([tagoffset , tag,attributes, 0 ]); //vpos to be resolved
@@ -34,35 +40,44 @@ var parseUnit=function(unittext) {
 	});
 	return {inscription:parsed, tags:tags};
 };
-var splitUnit=function(buf,sep) {
-	var units=[], unit="", last=0 ,name="";
-	buf.replace(sep,function(m,m1,offset){
-		units.push([name,buf.substring(last,offset),last]);
+var splitBlock=function(buf,blocksep) {
+	var blocks=[], block="", last=0 ,name="";
+	buf.replace(blocksep,function(m,m1,offset){
+		blocks.push([name,buf.substring(last,offset),last]);
 		name=m1;
 		last=offset;//+m.length;   //keep the separator
 	});
-	units.push([name,buf.substring(last),last]);
-	return units;
+	blocks.push([name,buf.substring(last),last]);
+	return blocks;
 };
 var defaultsep="_.id";
 var emptypagename="_";
 var parseXML=function(buf, opts){
 	opts=opts||{};
-	var sep=opts.sep||defaultsep;
-	if (sep.indexOf(".")==-1) {
-		var unitsep=new RegExp('<'+sep+'>([^<]*?)</'+sep+'>' , 'g')  ;
-	}  else {
-		var unitsep=new RegExp('<'+sep.replace(".",".*? ")+'="([^"]*?)"' , 'g')  ;
+	var sep=opts.sep||defaultsep, sepTagname=sep;
+
+	if (sep[0]=="@") {
+		sepTagname=sep.substr(1);
+		var blocksep=new RegExp("<("+sepTagname+")/>","g");
+		//use tagname as pagename first, resolve in processTag phrase
+	} else{
+		var dotpos=sep.indexOf(".");
+		if (dotpos==-1) {
+			var blocksep=new RegExp('<'+sep+'>([^<]*?)</'+sep+'>' , 'g')  ;
+		}  else {
+			sepTagname=sep.substr(0,dotpos);
+			var blocksep=new RegExp('<'+sep.replace(".",".*? ")+'="([^"]*?)"' , 'g')  ;
+		}		
 	}
-	var units=splitUnit(buf, unitsep);
+	var blocks=splitBlock(buf, blocksep);
 	var texts=[], tags=[];
-	units.map(function(U,i){
-		var out=parseUnit(U[1]);
+	blocks.map(function(U,i){
+		var out=parseBlock(U[1]);
 		if (opts.trim) out.inscription=out.inscription.trim();
 		texts.push({n:U[0]||emptypagename,t:out.inscription});
 		tags.push(out.tags);
 	});
-	return {texts:texts,tags:tags,sep:sep};
+	return {texts:texts,tags:tags,sep:sep,sepTagname:sepTagname};
 };
 
 /*

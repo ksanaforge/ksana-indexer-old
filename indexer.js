@@ -1,5 +1,5 @@
 var indexing=false; //only allow one indexing task
-var status={pageCount:0,progress:0,done:false}; //progress ==1 completed
+var status={segCount:0,progress:0,done:false}; //progress ==1 completed
 var session={};
 var api=null;
 var xml4kdb=null;
@@ -16,9 +16,9 @@ var putPosting=function(tk,vpos) {
 	var	postingid=session.json.tokens[tk];
 	var out=session.json, posting=null;
 	if (!postingid) {
-		out.postingCount++;
-		posting=out.postings[out.postingCount]=[];
-		session.json.tokens[tk]=out.postingCount;
+		out.postingcount++;
+		posting=out.postings[out.postingcount]=[];
+		session.json.tokens[tk]=out.postingcount;
 	} else {
 		posting=out.postings[postingid];
 	}
@@ -41,7 +41,7 @@ var putBigram=function(bi,vpos) {
 	}
 }
 var lastnormalized="", lastnormalized_vpos=0;
-var putPage=function(inscription) {
+var putSegment=function(inscription) {
 	var tokenized=tokenize(inscription);
 	var tokenOffset=0, tovpos=[] ;
 	for (var i=0;i<tokenized.tokens.length;i++) {
@@ -73,85 +73,51 @@ var shortFilename=function(fn) {
 	return arr.join('/');
 }
 
-var putFileInfo=function(fileContent) {
+var putFileInfo=function(filecontent) {
 	var shortfn=shortFilename(status.filename);
 	//session.json.files.push(fileInfo);
 	//empty or first line empty
-	session.json.fileContents.push(fileContent);
-	session.json.fileNames.push(shortfn);
-	session.json.fileOffsets.push(session.vpos);
-	//fileInfo.pageOffset.push(session.vpos);
+	session.json.filecontents.push(filecontent);
+	session.json.filenames.push(shortfn);
+	session.json.fileoffsets.push(session.vpos);
+	//fileInfo.segOffset.push(session.vpos);
 }
-var putPages_new=function(parsed,cb) { //25% faster than create a new document
-	//var fileInfo={pageNames:[],pageOffset:[]};
-	var fileContent=[];
+var putSegments=function(parsed,cb) { //25% faster than create a new document
+	//var fileInfo={segnames:[],segOffset:[]};
+	var filecontent=[];
 	parsed.tovpos=[];
-
-	putFileInfo(fileContent);
+	sepTagname=parsed.sepTagname;
+	putFileInfo(filecontent);
 	for (var i=0;i<parsed.texts.length;i++) {
 		var t=parsed.texts[i];
-		fileContent.push(t.t);
+		filecontent.push(t.t);
 
-		var tovpos=putPage(t.t);
+		var tovpos=putSegment(t.t);
 		parsed.tovpos[i]=tovpos;
-		session.json.pageNames.push(t.n);
-		session.json.pageOffsets.push(session.vpos);
+		session.json.segnames.push(t.n);
+		session.json.segoffsets.push(session.vpos);
 	}
 	var lastfilecount=0;
-	if (session.json.filePageCount.length) lastfilecount=session.json.filePageCount[session.json.filePageCount.length-1];
-	session.json.filePageCount.push(lastfilecount+parsed.texts.length); //accurate page count
+	if (session.json.filesegcount.length) lastfilecount=session.json.filesegcount[session.json.filesegcount.length-1];
+	session.json.filesegcount.push(lastfilecount+parsed.texts.length); //accurate seg count
 
-	if (fileContent.length==0 || (fileContent.length==1&&!fileContent[0])) {
+	if (filecontent.length==0 || (filecontent.length==1&&!filecontent[0])) {
 		console.log("no content in"+status.filename);
-		fileContent[0]=" "; //work around to avoid empty string array throw in kdbw
+		filecontent[0]=" "; //work around to avoid empty string array throw in kdbw
 	}
 
-	cb(parsed);//finish
-}
-
-var putPages=function(doc,parsed,cb) {
-	var fileInfo={parentId:[],reverts:[]};
-	var fileContent=[];	
-	var hasParentId=false, hasRevert=false;
-	parsed.tovpos=[];
-
-	putFileInfo(fileContent);
-	if (!session.files) session.files=[];
-	session.json.files.push(fileInfo);
-	
-	for (var i=1;i<doc.pageCount;i++) {
-		var pg=doc.getPage(i);
-		if (pg.isLeafPage()) {
-			fileContent.push(pg.inscription);
-			var tovpos=putPage(pg.inscription);
-			parsed.tovpos[i-1]=tovpos;
-		} else {
-			fileContent.push("");
-		}
-
-		session.json.pageNames.push(pg.name);
-		session.json.pageOffsets.push(session.vpos);
-
-		fileInfo.parentId.push(pg.parentId);
-		if (pg.parentId) hasParentId=true;
-		var revertstr="";
-		if (pg.parentId) revertstr=JSON.stringify(pg.compressedRevert());
-		if (revertstr) hasRevert=true;
-		fileInfo.reverts.push( revertstr );
-	}
-	if (!hasParentId) delete fileInfo["parentId"];
-	if (!hasRevert) delete fileInfo["reverts"];
 	cb(parsed);//finish
 }
 
 var parseBody=function(body,sep,cb) {
 	var res=xml4kdb.parseXML(body, {sep:sep,trim:!!session.config.trim});
-	putPages_new(res,cb);
-	status.pageCount+=res.texts.length;//dnew.pageCount;
+	putSegments(res,cb);
+	status.segCount+=res.texts.length;//dnew.segCount;
 }
 
 var pat=/([a-zA-Z:]+)="([^"]+?)"/g;
 var parseAttributesString=function(s) {
+	if (!s) return "";
 	var out={};
 	//work-around for repeated attribute,
 	//take the first one
@@ -183,9 +149,8 @@ var storeFields=function(fields,json) {
 /*
 	maintain a tag stack for known tag
 */
-var tagStack=[];
-var processTags=function(captureTags,tags,texts) {
-
+var tagStack=[],sepTagname="";
+var processTags=function(callbacks,captureTags,tags,texts) {
 	var getTextBetween=function(from,to,startoffset,endoffset) {
 		if (from==to) return texts[from].t.substring(startoffset,endoffset);
 		var first=texts[from].t.substr(startoffset-1);
@@ -195,6 +160,32 @@ var processTags=function(captureTags,tags,texts) {
 		}
 		var last=texts[to].t.substr(0,endoffset-1);
 		return first+middle+last;
+	}
+
+	var processTag=function(ntext){
+		var prev=tagStack[tagStack.length-1];
+		var text="";
+		if (!nulltag) {
+			if (typeof prev=="undefined" || tagname.substr(1)!=prev[0]) {
+				console.error("tag unbalance",tagname,prev,status.filename);						
+				throw "tag unbalance";
+			} else {
+				tagStack.pop();
+				text=getTextBetween(prev[3],ntext,prev[1],tagoffset);						
+				//console.log(text,prev[1],tagoffset)
+			}
+		}
+		if (typeof prev=="undefined") {
+			status.vpos=tagvpos;
+		} else {
+			status.vpos=tagvpos; 
+			status.vposstart=prev[4];
+			if (!attr) attr=prev[2]; //use attribute from open tag
+		}
+		status.tagStack=tagStack;
+
+		var fields=handler(text, tagname, attr, status);
+		if (fields) storeFields(fields,session.json);
 	}
 	var attr=null;
 	for (var i=0;i<tags.length;i++) {
@@ -214,41 +205,21 @@ var processTags=function(captureTags,tags,texts) {
 					}
 				}
 			}
-
-			if (captureTags[tagname]) {
-				attr=parseAttributesString(attributes);
-				if (!nulltag) {
-					tagStack.push([tagname,tagoffset,attr,i, tagvpos]);
-				}
-			}
 			var handler=null;
 			if (tagname[0]=="/") handler=captureTags[tagname.substr(1)];
 			else if (nulltag) handler=captureTags[tagname];
 
-			if (handler) {
-				var prev=tagStack[tagStack.length-1];
-				var text="";
-				if (!nulltag) {
-					if (typeof prev=="undefined" || tagname.substr(1)!=prev[0]) {
-						console.error("tag unbalance",tagname,prev,status.filename);						
-						throw "tag unbalance";
-					} else {
-						tagStack.pop();
-						text=getTextBetween(prev[3],i,prev[1],tagoffset);						
-						//console.log(text,prev[1],tagoffset)
-					}
-				}
-				if (typeof prev=="undefined") {
-					status.vpos=tagvpos;
-				} else {
-					status.vpos=tagvpos; 
-					status.vposstart=prev[4];
-					attr=prev[2]; //use attribute from open tag
-				}
-				status.tagStack=tagStack;
-				var fields=handler(text, tagname, attr, status);
-				if (fields) storeFields(fields,session.json);
+			attr=parseAttributesString(attributes);
+
+			if (!nulltag) {
+				tagStack.push([tagname,tagoffset,attr,i, tagvpos]);
 			}
+		
+			if (handler) processTag(i);
+			if (callbacks.getSegName && tagname==sepTagname){
+				session.json.segnames[i]=callbacks.getSegName(status);
+			}
+
 		}	
 	}
 }
@@ -290,44 +261,63 @@ var putFile=function(fn,cb) {
 	status.fileStartVpos=session.vpos;
 
 	if (callbacks.beforebodystart) callbacks.beforebodystart.apply(session,[texts.substring(0,start),status]);
-
-	parseBody(body,session.config.pageSeparator,function(parsed){
+	var sep=session.config.segsep;
+	parseBody(body,sep,function(parsed){
 		status.parsed=parsed;
-		if (callbacks.afterbodyend) {
-			if (captureTags) {
-				processTags(captureTags, parsed.tags, parsed.texts);
-			}
-			var ending="";
-			if (bodyend) ending=texts.substring(end+bodyend.length);
-			if (ending) callbacks.afterbodyend.apply(session,[ending,status]);
-			status.parsed=null;
-			status.bodytext=null;
-			status.starttext=null;
-			status.json=null;
+		if (captureTags) {
+			processTags(callbacks,captureTags, parsed.tags, parsed.texts);
 		}
+		var ending="";
+		if (bodyend) ending=texts.substring(end+bodyend.length);
+		if (ending && callbacks.afterbodyend) {
+			callbacks.afterbodyend.apply(session,[ending,status]);
+		}
+		status.parsed=null;
+		status.bodytext=null;
+		status.starttext=null;
+		status.json=null;
 		cb(); //parse body finished
 	});	
 }
 var initSession=function(config) {
 	var json={
 		postings:[[0]] //first one is always empty, because tokenid cannot be 0
-		,postingCount:0
-		,fileContents:[]
-		,fileNames:[]
-		,fileOffsets:[]
-		,filePageCount:[] //2014/11/26
-		,pageNames:[]
-		,pageOffsets:[]
+		,postingcount:0
+		,filecontents:[]
+		,filenames:[]
+		,fileoffsets:[]
+		,filesegcount:[] //2014/11/26
+		,segnames:[]
+		,segoffsets:[]
 		,tokens:{}
 	};
 	config.inputEncoding=config.inputEncoding||"utf8";
 	var session={vpos:1, json:json , kdb:null, filenow:0,done:false
-		           ,indexedTextLength:0,config:config,files:config.files,pagecount:0};
+		           ,indexedTextLength:0,config:config,files:config.files,segcount:0};
 	return session;
 }
 
+var mergemixin=function(config){
+	if (!config.mixin) return;
+	var mixins=requireLocal("ksana-indexer").mixins;
+	var mixin=mixins[config.mixin];
+	if (!mixin) return;
+
+	for (var i in mixin) {
+		if (!config[i]) config[i]=mixin[i];//overwrite
+		else {
+			if (typeof config[i]=="object") {
+				for (var j in config[i]) {
+					if (!config[i][j]) config[i][j]=mixin[i][j];
+				}
+			}
+		}
+	}
+}
 var initIndexer=function(mkdbconfig) {
 	session=initSession(mkdbconfig);
+
+	mergemixin(mkdbconfig);
 	var analyzer=requireLocal("ksana-analyzer");
 	api=analyzer.getAPI(mkdbconfig.meta.config);
 	
@@ -411,9 +401,9 @@ var createMeta=function() {
 	}
 	meta.name=session.config.name;
 	meta.vsize=session.vpos;
-	meta.pageCount=status.pageCount;
+	meta.segcount=status.segCount;
 	meta.version="2015.1.5";
-	meta.buildDate=(new Date()).toString();
+	meta.builddate=(new Date()).toString();
 	return meta;
 }
 var guessSize=function() {
@@ -437,9 +427,9 @@ var optimize4kdb=function(json) {
 	var newtokens=keys.map(function(k){return k[0]});
 	json.tokens=newtokens;
 	for (var i=0;i<json.postings.length;i++) json.postings[i].sorted=true; //use delta format to save space
-	json.postingsLength=buildpostingsLength(json.tokens,json.postings);
-	json.fileOffsets.sorted=true;
-	json.pageOffsets.sorted=true;
+	json.postingslength=buildpostingsLength(json.tokens,json.postings);
+	json.fileoffsets.sorted=true;
+	json.segoffsets.sorted=true;
 
 	return json;
 }
@@ -449,8 +439,8 @@ var finalize=function(cb) {
 
 	//if (session.kdb) Kde.closeLocal(session.kdbfn);
 
-	session.json.fileOffsets.push(session.vpos); //serve as terminator
-	session.json.pageOffsets.push(session.vpos); //serve as terminator
+	session.json.fileoffsets.push(session.vpos); //serve as terminator
+	session.json.segoffsets.push(session.vpos); //serve as terminator
 	session.json.meta=createMeta();
 	
 	if (!session.config.nobackup) backup(session.kdbfn);
@@ -471,7 +461,9 @@ var finalize=function(cb) {
 	if (session.config.extra) {
 		json.extra=session.config.extra;
 	}
-	
+	console.log("number of files:",session.json.filenames.length);
+	console.log("number of segments:",session.json.segnames.length);
+	console.log("average token per segment:",Math.floor(session.json.meta.vsize/session.json.segnames.length));
 	console.log("Writing file:",session.kdbfn);
 	kdbw.save(json,null,{autodelete:true});
 	
