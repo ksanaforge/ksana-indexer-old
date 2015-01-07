@@ -109,8 +109,8 @@ var putSegments=function(parsed,cb) { //25% faster than create a new document
 	cb(parsed);//finish
 }
 
-var parseBody=function(body,sep,cb) {
-	var res=xml4kdb.parseXML(body, {sep:sep,trim:!!session.config.trim});
+var parseBody=function(body,segsep,cb) {
+	var res=xml4kdb.parseXML(body, {segsep:segsep,maxsegsize:session.config.maxsegsize,trim:!!session.config.trim});
 	putSegments(res,cb);
 	status.segCount+=res.texts.length;//dnew.segCount;
 }
@@ -261,8 +261,8 @@ var putFile=function(fn,cb) {
 	status.fileStartVpos=session.vpos;
 
 	if (callbacks.beforebodystart) callbacks.beforebodystart.apply(session,[texts.substring(0,start),status]);
-	var sep=session.config.segsep;
-	parseBody(body,sep,function(parsed){
+
+	parseBody(body,session.config.segsep,function(parsed){
 		status.parsed=parsed;
 		if (captureTags) {
 			processTags(callbacks,captureTags, parsed.tags, parsed.texts);

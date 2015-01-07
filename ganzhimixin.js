@@ -9,7 +9,7 @@ var kepanStack=[];
 var getKepanId=function() {
 	var out="";
 	for (var i=0;i<kepanStack.length;i++) {
-		out+="-"+kepanStack[i];
+		out+="."+kepanStack[i];
 	}
 	return out.substr(1);//remove leading .
 }
@@ -24,6 +24,7 @@ var getSegName=function(status) {
   create Kepan stack.
 */
 var onKepan=function(text,tag,attributes,status) {
+
 	var level=ganzhi.indexOf(tag);
 	if (level==-1) {
 		console.log("not a kepan",tag);
