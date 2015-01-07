@@ -167,7 +167,8 @@ var processTags=function(callbacks,captureTags,tags,texts) {
 		var text="";
 		if (!nulltag) {
 			if (typeof prev=="undefined" || tagname.substr(1)!=prev[0]) {
-				console.error("tag unbalance",tagname,prev,status.filename);						
+				console.error("tag unbalance",tagname,prev,status.filename);
+				console.error(tagStack);
 				throw "tag unbalance";
 			} else {
 				tagStack.pop();
@@ -210,12 +211,13 @@ var processTags=function(callbacks,captureTags,tags,texts) {
 			else if (nulltag) handler=captureTags[tagname];
 
 			attr=parseAttributesString(attributes);
+		
+			if (handler) processTag(i);
 
 			if (!nulltag) {
 				tagStack.push([tagname,tagoffset,attr,i, tagvpos]);
 			}
-		
-			if (handler) processTag(i);
+						
 			if (callbacks.getSegName && tagname==sepTagname){
 				session.json.segnames[i]=callbacks.getSegName(status);
 			}
@@ -313,6 +315,7 @@ var mergemixin=function(config){
 			}
 		}
 	}
+	//console.log(config,mixin);
 }
 var initIndexer=function(mkdbconfig) {
 	session=initSession(mkdbconfig);
@@ -351,10 +354,21 @@ var indexstep=function() {
 		status.filename=session.files[session.filenow];
 		status.progress=session.filenow/session.files.length;
 		status.filenow=session.filenow;
-		putFile(status.filename,function(){
-			session.filenow++;
-			setTimeout(indexstep,1); //rest for 1 ms to response status			
-		});
+		if (session.config.callbacks && session.config.callbacks.onPrepareFile){
+			session.config.callbacks.onPrepareFile(status.filename,function(fn){
+				status.filename=fn;
+				putFile(status.filename,function(){
+					session.filenow++;
+					setTimeout(indexstep,1); //rest for 1 ms to response status			
+				});
+			});
+		}else {
+			putFile(status.filename,function(){
+				session.filenow++;
+				setTimeout(indexstep,1); //rest for 1 ms to response status			
+			});			
+		}
+
 	} else {
 		finalize(function(byteswritten) {
 			status.done=true;
