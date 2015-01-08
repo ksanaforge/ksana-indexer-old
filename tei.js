@@ -130,9 +130,13 @@ var handlersResult=function() {
 		if (m.result) out[m.name]=m.result();
 	})
 }
+var requireLocal=function(module) {
+	if (module[0]!=".") module="../node_modules/"+module+"/lib/sax.js";
+	return require(require("path").resolve(process.cwd(),module));
+}
 
 var parseP5=function(xml,parsed,fn,_config,_status) {
-	parser=require("sax").parser(true);
+	parser=requireLocal("sax").parser(true);
 	filename=fn;
 	context={ paths:[] , parents:[], handlers:{}, close_handlers:{}, text:"" ,now:null,status:_status};
 	parser.onopentag=onopentag;

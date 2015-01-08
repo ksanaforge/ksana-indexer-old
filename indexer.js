@@ -150,6 +150,7 @@ var storeFields=function(fields,json) {
 	maintain a tag stack for known tag
 */
 var tagStack=[],sepTagname="";
+var tagname,nulltag,handler,tagvpos;
 var processTags=function(callbacks,captureTags,tags,texts) {
 	var getTextBetween=function(from,to,startoffset,endoffset) {
 		if (from==to) return texts[from].t.substring(startoffset,endoffset);
@@ -161,8 +162,8 @@ var processTags=function(callbacks,captureTags,tags,texts) {
 		var last=texts[to].t.substr(0,endoffset-1);
 		return first+middle+last;
 	}
-
-	var processTag=function(ntext){
+	
+	var processEndTag=function(ntext,attr){
 		var prev=tagStack[tagStack.length-1];
 		var text="";
 		if (!nulltag) {
@@ -183,17 +184,20 @@ var processTags=function(callbacks,captureTags,tags,texts) {
 			status.vposstart=prev[4];
 			if (!attr) attr=prev[2]; //use attribute from open tag
 		}
-		status.tagStack=tagStack;
-
 		var fields=handler(text, tagname, attr, status);
-		if (fields) storeFields(fields,session.json);
+		if (fields) storeFields(fields,session.json);			
+
 	}
 	var attr=null;
+	status.tagStack=tagStack;
 	for (var i=0;i<tags.length;i++) {
 		for (var j=0;j<tags[i].length;j++) {
-			var T=tags[i][j],tagname=T[1],tagoffset=T[0],attributes=T[2],tagvpos=T[3];
+			var T=tags[i][j],tagoffset=T[0],attributes=T[2];
+			tagvpos=T[3];
+			tagname=T[1];
+			handler=null;
 			var lastchar=attributes[attributes.length-1];
-			var nulltag=false;
+			nulltag=false;
 			if (typeof lastchar!="undefined") {
 				if (lastchar=="/") {
 					nulltag=true;
@@ -206,18 +210,17 @@ var processTags=function(callbacks,captureTags,tags,texts) {
 					}
 				}
 			}
-			var handler=null;
+
+			if (captureTags[tagname]) {
+				attr=parseAttributesString(attributes);
+				if (!nulltag) {
+					tagStack.push([tagname,tagoffset,attr,i, tagvpos]);
+				}
+			}
 			if (tagname[0]=="/") handler=captureTags[tagname.substr(1)];
 			else if (nulltag) handler=captureTags[tagname];
+			if(handler) processEndTag(i,attr);
 
-			attr=parseAttributesString(attributes);
-		
-			if (handler) processTag(i);
-
-			if (!nulltag) {
-				tagStack.push([tagname,tagoffset,attr,i, tagvpos]);
-			}
-						
 			if (callbacks.getSegName && tagname==sepTagname){
 				session.json.segnames[i]=callbacks.getSegName(status);
 			}
