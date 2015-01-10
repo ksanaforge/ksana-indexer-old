@@ -6,9 +6,8 @@ var onKw=function(text,tag,attributes,status) {
 		throw "missing n in <kw"
 	}
 	var fieldname="kw";
-	if (a) fieldname+='-'+a;
+	if (a) fieldname+='_'+a;
 
-	//console.log(n,status.vpos)
 	return [
 	{path:[fieldname,'n'], value:n}
 	,{path:[fieldname,'vpos'], value:status.vpos}
