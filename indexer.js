@@ -177,6 +177,7 @@ var processTags=function(callbacks,captureTags,tags,texts) {
 				//console.log(text,prev[1],tagoffset)
 			}
 		}
+
 		if (typeof prev=="undefined") {
 			status.vpos=tagvpos;
 		} else {
@@ -228,6 +229,16 @@ var processTags=function(callbacks,captureTags,tags,texts) {
 		}	
 	}
 }
+var resolveTagsVpos=function(parsed) {
+	for (var i=0;i<parsed.tags.length;i++) {
+		for (var j=0;j<parsed.tags[i].length;j++) {
+			var t=parsed.tags[i][j];
+			var pos=t[0];
+			t[3]=parsed.tovpos[i][pos];
+			while (pos && typeof t[3]=="undefined") t[3]=parsed.tovpos[i][--pos];
+		}
+	}
+}
 var putFile=function(fn,cb) {
 	var fs=require("fs");
 	if (!fs.existsSync(fn)){
@@ -269,6 +280,7 @@ var putFile=function(fn,cb) {
 
 	parseBody(body,session.config.segsep,function(parsed){
 		status.parsed=parsed;
+		resolveTagsVpos(parsed);
 		if (captureTags) {
 			processTags(callbacks,captureTags, parsed.tags, parsed.texts);
 		}
