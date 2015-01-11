@@ -18,5 +18,6 @@ var mixin={
 	captureTags:{
 		kw :onKw
 	}
+	,segsep:"@seg"	
 }
 module.exports=mixin;
