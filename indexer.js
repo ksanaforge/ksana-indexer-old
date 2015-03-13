@@ -19,6 +19,7 @@ var putPosting=function(tk,vpos) {
 		out.postingcount++;
 		posting=out.postings[out.postingcount]=[];
 		session.json.tokens[tk]=out.postingcount;
+		session.json.tokenids.push([tk,out.postingcount]);
 	} else {
 		posting=out.postings[postingid];
 	}
@@ -53,7 +54,7 @@ var putSegment=function(inscription) {
 		} else {
 			var normalized=normalize(t);
 			if (normalized) {
-				putPosting(normalized);
+				putPosting(normalized,session.vpos);
 				if (lastnormalized_vpos+1==session.vpos &&  lastnormalized && session.config.meta && session.config.meta.bigram) {
 					putBigram(lastnormalized+normalized,lastnormalized_vpos);
 				} 
@@ -307,6 +308,7 @@ var initSession=function(config) {
 		,segnames:[]
 		,segoffsets:[]
 		,tokens:{}
+		,tokenids:[] //not in kdb
 	};
 	config.inputEncoding=config.inputEncoding||"utf8";
 	var session={vpos:1, json:json , kdb:null, filenow:0,done:false
@@ -448,12 +450,18 @@ var buildpostingsLength=function(tokens,postings) {
 	return out;
 }
 var optimize4kdb=function(json) {
+	/*
 	var keys=[];
 	for (var key in json.tokens) {
 		keys[keys.length]=[key,json.tokens[key]];
 	}
-	keys.sort(function(a,b){return a[1]-b[1]});//sort by token id
-	var newtokens=keys.map(function(k){return k[0]});
+	*/
+
+
+	json.tokenids.sort(function(a,b){return a[1]-b[1]});//sort by token id
+	var newtokens=json.tokenids.map(function(k){return k[0]});
+	delete json.tokenids;
+
 	json.tokens=newtokens;
 	for (var i=0;i<json.postings.length;i++) json.postings[i].sorted=true; //use delta format to save space
 	json.postingslength=buildpostingsLength(json.tokens,json.postings);
