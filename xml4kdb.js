@@ -49,7 +49,7 @@ var splitSeg=function(buf,segsep,maxsegsize) {
 		}
 		if (offset-last>maxsegsize) {
 			throw "seg '"+name+"' too big "+buf.substring(0,100)+"...";
-		}		
+		}
 		segs.push([name,buf.substring(last,offset),last]);
 		name=m1;
 		last=offset;//+m.length;   //keep the separator
@@ -59,8 +59,22 @@ var splitSeg=function(buf,segsep,maxsegsize) {
 };
 var defaultsep="_.id";
 var emptypagename="_";
-var parseXML=function(buf, opts){
-	opts=opts||{};
+
+var createSegsFromCSV=function(buf) {
+	var segs=[];
+	var lines=buf.replace(/\r\n/g,"\n").split("\n");
+	for (var i=0;i<lines.length;i++) {
+		var L=lines[i];
+		var comma=L.indexOf(",");
+		if (comma==-1) {
+			throw "not a csv at line "+i;
+			return;
+		}
+		segs.push([L.substr(0,comma),L.substr(comma+1)]);
+	}
+	return segs;
+}
+var createSegsFromTag=function(buf,opts) {
 	var sep=opts.segsep||defaultsep, sepTagname=sep;
 	opts.maxsegsize=opts.maxsegsize||65536;
 	if (sep[0]=="@") {
@@ -74,10 +88,22 @@ var parseXML=function(buf, opts){
 		}  else {
 			sepTagname=sep.substr(0,dotpos);
 			var segsep=new RegExp('<'+sep.replace(".",".*? ")+'="([^"]*?)"' , 'g')  ;
-		}		
+		}
 	}
 	var segs=splitSeg(buf, segsep, opts.maxsegsize);
+	return segs;
+}
+var parseXML=function(buf, opts){
+	opts=opts||{};
+	var sep=opts.segsep||defaultsep, sepTagname=sep;
 	var texts=[], tags=[];
+	var segs=null;
+	if (opts.csv) {
+		segs=createSegsFromCSV(buf);
+	} else {
+		segs=createSegsFromTag(buf,opts);
+	}
+
 	segs.map(function(U,i){
 		var out=parseSeg(U[1]);
 		if (opts.trim) out.inscription=out.inscription.trim();
@@ -94,7 +120,7 @@ var parseXML=function(buf, opts){
 /*
 		var o=pg.getOrigin();
 		if (o.id && this.tags[o.id-1] && this.tags[o.id-1].length) {
-			this.tags[o.id-1]=pg.upgradeXMLTags(this.tags[o.id-1], pg.__revisions__());	
+			this.tags[o.id-1]=pg.upgradeXMLTags(this.tags[o.id-1], pg.__revisions__());
 		}
 */
 var upgradeXMLTags=function(tags,revs) {
@@ -128,7 +154,7 @@ var migrateRawTags=function(doc,tags) {
 			var rev=pg.revertRevision(o.revert,pg.inscription);
 			T=upgradeXMLTags(T,rev);
 			pg=o;
-		}		
+		}
 		out.push(T);
 	}
 	return out;

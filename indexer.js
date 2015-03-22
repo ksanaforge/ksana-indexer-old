@@ -25,7 +25,7 @@ var putPosting=function(tk,vpos) {
 	}
 	posting.push(vpos||session.vpos);
 }
-var indexOfSorted = function (array, obj) { 
+var indexOfSorted = function (array, obj) {
   var low = 0,
   high = array.length-1;
   while (low < high) {
@@ -57,7 +57,7 @@ var putSegment=function(inscription) {
 				putPosting(normalized,session.vpos);
 				if (lastnormalized_vpos+1==session.vpos &&  lastnormalized && session.config.meta && session.config.meta.bigram) {
 					putBigram(lastnormalized+normalized,lastnormalized_vpos);
-				} 
+				}
 				lastnormalized_vpos=session.vpos;
 			}
 			lastnormalized=normalized;
@@ -109,9 +109,12 @@ var putSegments=function(parsed,cb) { //25% faster than create a new document
 
 	cb(parsed);//finish
 }
-
+var isCSV=function(fn) {
+	return (fn.substr(fn.length-4).toLowerCase()===".csv") ;
+}
 var parseBody=function(body,segsep,cb) {
-	var res=xml4kdb.parseXML(body, {segsep:segsep,maxsegsize:session.config.maxsegsize,trim:!!session.config.trim});
+	var res=xml4kdb.parseXML(body,
+		{segsep:segsep,maxsegsize:session.config.maxsegsize,trim:!!session.config.trim, csv:isCSV(status.filename)});
 	putSegments(res,cb);
 	status.segCount+=res.texts.length;//dnew.segCount;
 }
@@ -142,7 +145,7 @@ var storeFields=function(fields,json) {
 		}
 		if (typeof field.value=="undefined") {
 			throw "empty field value of ["+path+"] in file "+status.filename;
-		} 
+		}
 		storepoint.push(field.value);
 	}
 	fields.map(storeField);
@@ -163,7 +166,7 @@ var processTags=function(callbacks,captureTags,tags,texts) {
 		var last=texts[to].t.substr(0,endoffset-1);
 		return first+middle+last;
 	}
-	
+
 	var processEndTag=function(ntext,attr){
 		var prev=tagStack[tagStack.length-1];
 		var text="";
@@ -174,7 +177,7 @@ var processTags=function(callbacks,captureTags,tags,texts) {
 				throw "tag unbalance";
 			} else {
 				tagStack.pop();
-				text=getTextBetween(prev[3],ntext,prev[1],tagoffset);						
+				text=getTextBetween(prev[3],ntext,prev[1],tagoffset);
 				//console.log(text,prev[1],tagoffset)
 			}
 		}
@@ -182,12 +185,12 @@ var processTags=function(callbacks,captureTags,tags,texts) {
 		if (typeof prev=="undefined") {
 			status.vpos=tagvpos;
 		} else {
-			status.vpos=tagvpos; 
+			status.vpos=tagvpos;
 			status.vposstart=prev[4];
 			if (!attr) attr=prev[2]; //use attribute from open tag
 		}
 		var fields=handler(text, tagname, attr, status);
-		if (fields) storeFields(fields,session.json);			
+		if (fields) storeFields(fields,session.json);
 
 	}
 	var attr=null;
@@ -227,7 +230,7 @@ var processTags=function(callbacks,captureTags,tags,texts) {
 				session.json.segnames[i]=callbacks.getSegName(status);
 			}
 
-		}	
+		}
 	}
 }
 var resolveTagsVpos=function(parsed) {
@@ -257,8 +260,8 @@ var putFile=function(fn,cb) {
 	var callbacks=session.config.callbacks||{};
 	var started=false,stopped=false;
 	if (callbacks.beforeFile) {
-		texts=callbacks.beforeFile.apply(session,[texts,fn]);	
-	} 
+		texts=callbacks.beforeFile.apply(session,[texts,fn]);
+	}
 	if (callbacks.onFile) callbacks.onFile.apply(session,[fn,status]);
 	else console.log("indexing",fn);
 
@@ -272,7 +275,7 @@ var putFile=function(fn,cb) {
 	var body=texts.substring(start,end+bodyendlen);
 	status.json=session.json;
 	status.storeFields=storeFields;
-	
+
 	status.bodytext=body;
 	status.starttext=texts.substring(0,start);
 	status.fileStartVpos=session.vpos;
@@ -295,7 +298,7 @@ var putFile=function(fn,cb) {
 		status.starttext=null;
 		status.json=null;
 		cb(); //parse body finished
-	});	
+	});
 }
 var initSession=function(config) {
 	var json={
@@ -340,7 +343,7 @@ var initIndexer=function(mkdbconfig) {
 	mergemixin(mkdbconfig);
 	var analyzer=requireLocal("ksana-analyzer");
 	api=analyzer.getAPI(mkdbconfig.meta.config);
-	
+
 	xml4kdb=requireLocal("ksana-indexer").xml4kdb;
 
 	//mkdbconfig has a chance to overwrite API
@@ -376,14 +379,14 @@ var indexstep=function() {
 				status.filename=fn;
 				putFile(status.filename,function(){
 					session.filenow++;
-					setTimeout(indexstep,1); //rest for 1 ms to response status			
+					setTimeout(indexstep,1); //rest for 1 ms to response status
 				});
 			});
 		}else {
 			putFile(status.filename,function(){
 				session.filenow++;
-				setTimeout(indexstep,1); //rest for 1 ms to response status			
-			});			
+				setTimeout(indexstep,1); //rest for 1 ms to response status
+			});
 		}
 
 	} else {
@@ -394,7 +397,7 @@ var indexstep=function() {
 			if (session.config.finalized) {
 				session.config.finalized(session,status);
 			}
-		});	
+		});
 	}
 }
 
@@ -471,7 +474,7 @@ var optimize4kdb=function(json) {
 	return json;
 }
 
-var finalize=function(cb) {	
+var finalize=function(cb) {
 	//var Kde=nodeRequire("./kde");
 
 	//if (session.kdb) Kde.closeLocal(session.kdbfn);
@@ -479,7 +482,7 @@ var finalize=function(cb) {
 	session.json.fileoffsets.push(session.vpos); //serve as terminator
 	session.json.segoffsets.push(session.vpos); //serve as terminator
 	session.json.meta=createMeta();
-	
+
 	if (!session.config.nobackup) backup(session.kdbfn);
 	status.message='writing '+session.kdbfn;
 	//output=api("optimize")(session.json,session.ydbmeta.config);
@@ -503,7 +506,7 @@ var finalize=function(cb) {
 	console.log("average token per segment:",Math.floor(session.json.meta.vsize/session.json.segnames.length));
 	console.log("Writing file:",session.kdbfn);
 	kdbw.save(json,null,{autodelete:true});
-	
+
 	kdbw.writeFile(session.kdbfn,function(total,written) {
 		status.progress=written/total;
 		status.outputfn=session.kdbfn;
