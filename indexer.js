@@ -9,8 +9,15 @@ var tokenize=null;
 
 //
 var requireLocal=function(module) {
+	var path=require("path");
+	var fs=require("fs");
 	if (module[0]!=".") module="../node_modules/"+module+"/index.js";
-	return require(require("path").resolve(process.cwd(),module));
+	var abspath=path.resolve(process.cwd(),module);
+	if (!fs.existsSync(abspath)) {
+		module="../"+module;
+		abspath=path.resolve(process.cwd(),module);
+	}
+	return require(abspath);
 }
 var putPosting=function(tk,vpos) {
 	var	postingid=session.json.tokens[tk];
@@ -83,8 +90,10 @@ var putFileInfo=function(filecontent) {
 	session.json.fileoffsets.push(session.vpos);
 	//fileInfo.segOffset.push(session.vpos);
 }
+
 var putSegments=function(parsed,cb) { //25% faster than create a new document
 	//var fileInfo={segnames:[],segOffset:[]};
+	var rawtags=requireLocal("ksana-indexer").rawtags;
 	var filecontent=[];
 	parsed.tovpos=[];
 	sepTagname=parsed.sepTagname;
@@ -92,6 +101,10 @@ var putSegments=function(parsed,cb) { //25% faster than create a new document
 	for (var i=0;i<parsed.texts.length;i++) {
 		var t=parsed.texts[i];
 		filecontent.push(t.t);
+
+		if (!session.config.norawtag && parsed.tags[i].length) {
+			rawtags.emit(session.json.segnames.length,parsed.tags[i]);
+		}
 
 		var tovpos=putSegment(t.t);
 		parsed.tovpos[i]=tovpos;
@@ -345,6 +358,8 @@ var initIndexer=function(mkdbconfig) {
 	api=analyzer.getAPI(mkdbconfig.meta.config);
 
 	xml4kdb=requireLocal("ksana-indexer").xml4kdb;
+	rawtags=requireLocal("ksana-indexer").rawtags;
+	rawtags.init();
 
 	//mkdbconfig has a chance to overwrite API
 	if (mkdbconfig.meta && mkdbconfig.meta.normalize) {
@@ -460,6 +475,10 @@ var optimize4kdb=function(json) {
 	}
 	*/
 
+	if (!session.config.norawtag) {
+		var rawtags=requireLocal("ksana-indexer").rawtags;
+		json.rawtag=rawtags.toJSON();
+	}
 
 	json.tokenids.sort(function(a,b){return a[1]-b[1]});//sort by token id
 	var newtokens=json.tokenids.map(function(k){return k[0]});

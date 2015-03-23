@@ -1,7 +1,13 @@
 var fs=require("fs");
 var requireLocal=function(module) {
+	var path=require("path");
 	if (module[0]!=".") module="../node_modules/"+module+"/index.js";
-	return require(require("path").resolve(process.cwd(),module));
+	var abspath=path.resolve(process.cwd(),module);
+	if (!fs.existsSync(abspath)) {
+		module="../"+module;
+		abspath=path.resolve(process.cwd(),module);
+	}
+	return require(abspath);
 }
 
 var docx2kdb=requireLocal("ksana-parser-docx");

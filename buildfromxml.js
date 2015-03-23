@@ -51,8 +51,8 @@ var build=function(mkdbconfig){
   
   var glob = require("glob");
     
-  if (typeof mkdbconfig.glob=="string") {
-    if (mkdbconfig.glob.indexOf(".lst")==mkdbconfig.glob.length-4) {
+  if (typeof mkdbconfig.glob==="string") {
+    if (mkdbconfig.glob.indexOf(".lst")===mkdbconfig.glob.length-4) {
       mkdbconfig.files=fs.readFileSync(mkdbconfig.glob,"utf8")
       .replace(/\r\n/g,"\n").replace(/\r/g,"\n").split("\n");
       startindexer(mkdbconfig);
@@ -67,9 +67,6 @@ var build=function(mkdbconfig){
     mkdbconfig.files=mkdbconfig.glob;
     startindexer(mkdbconfig);
   }
-
-
-
 }
 
 module.exports=build;

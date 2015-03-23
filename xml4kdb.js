@@ -65,6 +65,8 @@ var createSegsFromCSV=function(buf) {
 	var lines=buf.replace(/\r\n/g,"\n").split("\n");
 	for (var i=0;i<lines.length;i++) {
 		var L=lines[i];
+		L=L.replace(/\\n/g,"\n");
+		L=L.replace(/\\t/g,"\t");
 		var comma=L.indexOf(",");
 		if (comma==-1) {
 			throw "not a csv at line "+i;
@@ -181,4 +183,6 @@ var exportXML=function(doc,originalrawtags){
 
 	return out.join("");
 };
+
+
 module.exports={parseXML:parseXML, exportXML:exportXML}
