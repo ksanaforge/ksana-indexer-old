@@ -451,7 +451,7 @@ var createMeta=function() {
 	meta.name=session.config.name;
 	meta.vsize=session.vpos;
 	meta.segcount=status.segCount;
-	meta.version="2015.1.5";
+	meta.version=Date.now().toString();
 	meta.builddate=(new Date()).toString();
 	return meta;
 }
@@ -477,7 +477,9 @@ var optimize4kdb=function(json) {
 
 	if (!session.config.norawtag) {
 		var rawtags=requireLocal("ksana-indexer").rawtags;
-		json.rawtag=rawtags.toJSON();
+		
+		var raw=rawtags.toJSON();
+		if (raw.tag.length) json.rawtag=raw;
 	}
 
 	json.tokenids.sort(function(a,b){return a[1]-b[1]});//sort by token id
