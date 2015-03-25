@@ -64,7 +64,8 @@ var createSegsFromCSV=function(buf) {
 	var segs=[];
 	var lines=buf.replace(/\r\n/g,"\n").split("\n");
 	for (var i=0;i<lines.length;i++) {
-		var L=lines[i];
+		var L=lines[i].trim();
+		if (!L) continue;
 		L=L.replace(/\\n/g,"\n");
 		L=L.replace(/\\t/g,"\t");
 		var comma=L.indexOf(",");
