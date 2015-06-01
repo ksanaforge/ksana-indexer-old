@@ -456,8 +456,8 @@ var createMeta=function() {
 	return meta;
 }
 var guessSize=function() {
-	var size=session.vpos * 5;
-	if (size<1024*1024) size=1024*1024;
+	var size=session.vpos * 10;
+	if (size<1024*1024*64) size=1024*1024*64;
 	return  size;
 }
 var buildpostingsLength=function(tokens,postings) {

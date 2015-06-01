@@ -48,7 +48,6 @@ var build=function(mkdbconfig){
   var fs=require("fs");
   starttime=new Date();
   console.log("START",starttime);
-  
   var glob = require("glob");
     
   if (typeof mkdbconfig.glob==="string") {

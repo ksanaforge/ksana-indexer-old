@@ -136,7 +136,12 @@ var Kfs=function(path,opts) {
 			throw "empty fixed array "+key_writing;
 		}
 		for (var i = 0; i < value.length ; i++) {
-			func.apply(dbuf,[value[i],i*unitsize+pos])
+			try {
+				func.apply(dbuf,[value[i],i*unitsize+pos])	
+			} catch(e) {
+				throw e;
+			}
+			
 		}
 		var len=unitsize*value.length;
 		if (pos+len>cur) cur=pos+len;
