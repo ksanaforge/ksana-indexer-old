@@ -12,7 +12,7 @@ var finalize_pb=function(fields){
 	}
 
 	out.sort(function(a,b){
-		return a[2]-b[2];
+		return (a[1]>b[1])?1:(a[1]<b[1])?-1:0;
 	});
 
 	fields.pb_sorted=[];
@@ -21,6 +21,7 @@ var finalize_pb=function(fields){
 		fields.pb_sorted_idx.push(out[i][0]);
 		fields.pb_sorted.push(out[i][1]);
 	}		
+
 }
 
 module.exports={on_pb:on_pb,finalize_pb:finalize_pb};
