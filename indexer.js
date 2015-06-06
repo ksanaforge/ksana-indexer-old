@@ -1,12 +1,6 @@
 var indexing=false; //only allow one indexing task
 var status={segCount:0,progress:0,done:false}; //progress ==1 completed
 var session={};
-var api=null;
-var xml4kdb=null;
-var isSkip=null;
-var normalize=null;
-var tokenize=null;
-
 //
 var requireLocal=function(module) {
 	var path=require("path");
@@ -19,300 +13,7 @@ var requireLocal=function(module) {
 	}
 	return require(abspath);
 }
-var putPosting=function(tk,vpos) {
-	var	postingid=session.json.tokens[tk];
-	var out=session.json, posting=null;
-	if (!postingid) {
-		out.postingcount++;
-		posting=out.postings[out.postingcount]=[];
-		session.json.tokens[tk]=out.postingcount;
-		session.json.tokenids.push([tk,out.postingcount]);
-	} else {
-		posting=out.postings[postingid];
-	}
-	posting.push(vpos||session.vpos);
-}
-var indexOfSorted = function (array, obj) {
-  var low = 0,
-  high = array.length-1;
-  while (low < high) {
-    var mid = (low + high) >> 1;
-    array[mid] < obj ? low = mid + 1 : high = mid;
-  }
-  return low;
-};
 
-var putBigram=function(bi,vpos) {
-	var i=indexOfSorted(session.config.meta.bigram,bi);
-	if (i>-1 && session.config.meta.bigram[i]==bi) {
-		putPosting(bi,vpos);
-	}
-}
-var lastnormalized="", lastnormalized_vpos=0;
-var putSegment=function(inscription) {
-	var tokenized=tokenize(inscription);
-	var tokenOffset=0, tovpos=[] ;
-	for (var i=0;i<tokenized.tokens.length;i++) {
-		var t=tokenized.tokens[i];
-		tovpos[tokenOffset]=session.vpos;
-		tokenOffset+=t.length;
-		if (isSkip(t)) {
-			 session.vpos--;
-		} else {
-			var normalized=normalize(t);
-			if (normalized) {
-				putPosting(normalized,session.vpos);
-				if (lastnormalized_vpos+1==session.vpos &&  lastnormalized && session.config.meta && session.config.meta.bigram) {
-					putBigram(lastnormalized+normalized,lastnormalized_vpos);
-				}
-				lastnormalized_vpos=session.vpos;
-			}
-			lastnormalized=normalized;
- 		}
- 		session.vpos++;
-	}
-	tovpos[tokenOffset]=session.vpos;
-	session.indexedTextLength+= inscription.length;
-	return tovpos;
-}
-var shortFilename=function(fn) {
-	var arr=fn.split('/');
-	while (arr.length>2) arr.shift();
-	return arr.join('/');
-}
-
-var putFileInfo=function(filecontent) {
-	var shortfn=shortFilename(status.filename);
-	//session.json.files.push(fileInfo);
-	//empty or first line empty
-	session.json.filecontents.push(filecontent);
-	session.json.filenames.push(shortfn);
-	session.json.fileoffsets.push(session.vpos);
-	//fileInfo.segOffset.push(session.vpos);
-}
-
-var putSegments=function(parsed,cb) { //25% faster than create a new document
-	//var fileInfo={segnames:[],segOffset:[]};
-	var rawtags=requireLocal("ksana-indexer").rawtags;
-	var filecontent=[];
-	parsed.tovpos=[];
-	sepTagname=parsed.sepTagname;
-	putFileInfo(filecontent);
-	for (var i=0;i<parsed.texts.length;i++) {
-		var t=parsed.texts[i];
-		filecontent.push(t.t);
-
-		if (!session.config.norawtag && parsed.tags[i].length) {
-			rawtags.emit(session.json.segnames.length,parsed.tags[i]);
-		}
-
-		var tovpos=putSegment(t.t);
-		parsed.tovpos[i]=tovpos;
-		session.json.segnames.push(t.n);
-		session.json.segoffsets.push(session.vpos);
-	}
-	var lastfilecount=0;
-	if (session.json.filesegcount.length) lastfilecount=session.json.filesegcount[session.json.filesegcount.length-1];
-	session.json.filesegcount.push(lastfilecount+parsed.texts.length); //accurate seg count
-
-	if (filecontent.length==0 || (filecontent.length==1&&!filecontent[0])) {
-		console.log("no content in"+status.filename);
-		filecontent[0]=" "; //work around to avoid empty string array throw in kdbw
-	}
-
-	cb(parsed);//finish
-}
-var isCSV=function(fn) {
-	return (fn.substr(fn.length-4).toLowerCase()===".csv") ;
-}
-var parseBody=function(body,segsep,cb) {
-	var res=xml4kdb.parseXML(body,
-		{segsep:segsep,maxsegsize:session.config.maxsegsize,trim:!!session.config.trim, csv:isCSV(status.filename)});
-	putSegments(res,cb);
-	status.segCount+=res.texts.length;//dnew.segCount;
-}
-
-var pat=/([a-zA-Z:]+)="([^"]+?)"/g;
-var parseAttributesString=function(s) {
-	if (!s) return "";
-	var out={};
-	//work-around for repeated attribute,
-	//take the first one
-	s.replace(pat,function(m,m1,m2){if (!out[m1]) out[m1]=m2});
-	return out;
-}
-var storeFields=function(fields,json) {
-	if (!json.fields) json.fields={};
-	var root=json.fields;
-	if (!(fields instanceof Array) ) fields=[fields];
-	var storeField=function(field) {
-		var path=field.path;
-		storepoint=root;
-		if (!(path instanceof Array)) path=[path];
-		for (var i=0;i<path.length;i++) {
-			if (!storepoint[path[i]]) {
-				if (i<path.length-1) storepoint[path[i]]={};
-				else storepoint[path[i]]=[];
-			}
-			storepoint=storepoint[path[i]];
-		}
-		if (typeof field.value=="undefined") {
-			throw "empty field value of ["+path+"] in file "+status.filename;
-		}
-		storepoint.push(field.value);
-	}
-	fields.map(storeField);
-}
-/*
-	maintain a tag stack for known tag
-*/
-var tagStack=[],sepTagname="";
-var tagname,nulltag,handler,tagvpos;
-var processTags=function(callbacks,captureTags,tags,texts) {
-	var getTextBetween=function(from,to,startoffset,endoffset) {
-		if (from==to) return texts[from].t.substring(startoffset,endoffset);
-		var first=texts[from].t.substr(startoffset-1);
-		var middle="";
-		for (var i=from+1;i<to;i++) {
-			middle+=texts[i].t;
-		}
-		var last=texts[to].t.substr(0,endoffset-1);
-		return first+middle+last;
-	}
-
-	var processEndTag=function(ntext,attr){
-		var prev=tagStack[tagStack.length-1];
-		var text="";
-		if (!nulltag) {
-			if (typeof prev=="undefined" || tagname.substr(1)!=prev[0]) {
-				console.error("tag unbalance",tagname,prev,status.filename);
-				console.error(tagStack);
-				throw "tag unbalance";
-			} else {
-				tagStack.pop();
-				text=getTextBetween(prev[3],ntext,prev[1],tagoffset);
-				//console.log(text,prev[1],tagoffset)
-			}
-		}
-
-		if (typeof prev=="undefined") {
-			status.vpos=tagvpos;
-		} else {
-			status.vpos=tagvpos;
-			status.vposstart=prev[4];
-			if (!attr) attr=prev[2]; //use attribute from open tag
-		}
-		var fields=handler(text, tagname, attr, status);
-		if (fields) storeFields(fields,session.json);
-
-	}
-	var attr=null;
-	status.tagStack=tagStack;
-	for (var i=0;i<tags.length;i++) {
-		for (var j=0;j<tags[i].length;j++) {
-			var T=tags[i][j],tagoffset=T[0],attributes=T[2];
-			tagvpos=T[3];
-			tagname=T[1];
-			handler=null;
-			var lastchar=attributes[attributes.length-1];
-			nulltag=false;
-			if (typeof lastchar!="undefined") {
-				if (lastchar=="/") {
-					nulltag=true;
-				} else {
-					var lastcc=lastchar.charCodeAt(0);
-					if (!(lastchar=='"' ||lastchar=='-'|| (lastcc>0x40 && lastcc<0x7b))) {
-						console.error("error lastchar of tag ("+lastchar+")");
-						console.error("in <"+tagname,attributes+"> of",status.filename)	;
-						throw 'last char of should be / " or ascii ';
-					}
-				}
-			}
-
-			if (captureTags[tagname]) {
-				attr=parseAttributesString(attributes);
-				if (!nulltag) {
-					tagStack.push([tagname,tagoffset,attr,i, tagvpos]);
-				}
-			}
-			if (tagname[0]=="/") handler=captureTags[tagname.substr(1)];
-			else if (nulltag) handler=captureTags[tagname];
-			if(handler) processEndTag(i,attr);
-
-			if (callbacks.getSegName && tagname==sepTagname){
-				session.json.segnames[i]=callbacks.getSegName(status);
-			}
-
-		}
-	}
-}
-var resolveTagsVpos=function(parsed) {
-	for (var i=0;i<parsed.tags.length;i++) {
-		for (var j=0;j<parsed.tags[i].length;j++) {
-			var t=parsed.tags[i][j];
-			var pos=t[0];
-			t[3]=parsed.tovpos[i][pos];
-			while (pos && typeof t[3]=="undefined") t[3]=parsed.tovpos[i][--pos];
-		}
-	}
-}
-var putFile=function(fn,cb) {
-	var fs=require("fs");
-	if (!fs.existsSync(fn)){
-		if (fn) console.warn("file ",fn,"doens't exist");
-		cb();
-		return;
-	}
-	var texts=fs.readFileSync(fn,session.config.inputEncoding).replace(/\r\n/g,"\n");
-	if (texts.charCodeAt(0)==0xfeff) {
-		texts=texts.substring(1);
-	}
-	var bodyend=session.config.bodyend;
-	var bodystart=session.config.bodystart;
-	var captureTags=session.config.captureTags;
-	var callbacks=session.config.callbacks||{};
-	var started=false,stopped=false;
-	if (callbacks.beforeFile) {
-		texts=callbacks.beforeFile.apply(session,[texts,fn]);
-	}
-	if (callbacks.onFile) callbacks.onFile.apply(session,[fn,status]);
-	else console.log("indexing",fn);
-
-	var start=bodystart ? texts.indexOf(bodystart) : 0 ;
-	var end=bodyend? texts.indexOf(bodyend): texts.length;
-	if (!bodyend) bodyendlen=0;
-	else bodyendlen=bodyend.length;
-	//assert.equal(end>start,true);
-
-	// split source xml into 3 parts, before <body> , inside <body></body> , and after </body>
-	var body=texts.substring(start,end+bodyendlen);
-	status.json=session.json;
-	status.storeFields=storeFields;
-
-	status.bodytext=body;
-	status.starttext=texts.substring(0,start);
-	status.fileStartVpos=session.vpos;
-
-	if (callbacks.beforebodystart) callbacks.beforebodystart.apply(session,[texts.substring(0,start),status]);
-
-	parseBody(body,session.config.segsep,function(parsed){
-		status.parsed=parsed;
-		resolveTagsVpos(parsed);
-		if (captureTags) {
-			processTags(callbacks,captureTags, parsed.tags, parsed.texts);
-		}
-		var ending="";
-		if (bodyend) ending=texts.substring(end+bodyend.length);
-		if (ending && callbacks.afterbodyend) {
-			callbacks.afterbodyend.apply(session,[ending,status]);
-		}
-		status.parsed=null;
-		status.bodytext=null;
-		status.starttext=null;
-		status.json=null;
-		cb(); //parse body finished
-	});
-}
 var initSession=function(config) {
 	var json={
 		postings:[[0]] //first one is always empty, because tokenid cannot be 0
@@ -350,30 +51,52 @@ var mergemixin=function(config){
 	}
 	//console.log(config,mixin);
 }
+var taghandler=require("./taghandler");
+var setupPaging=function(paging) {
+	if (typeof paging=="string") paging=[paging];
+	if (!session.config.captureTags) session.config.captureTags={};
+	for (var i=0;i<paging.length;i++) {
+		var handler=taghandler["on_"+paging[i]];
+		if (handler) session.config.captureTags[paging[i]]=handler;
+	}	
+}
+var finalizePaging=function(paging,fields){
+	if (typeof paging=="string") paging=[paging];
+	for (var i=0;i<paging.length;i++) {
+		var handler=taghandler["finalize_"+paging[i]];
+		if (handler) handler(fields);
+	}
+}
 var initIndexer=function(mkdbconfig) {
 	session=initSession(mkdbconfig);
 
 	mergemixin(mkdbconfig);
 	var analyzer=requireLocal("ksana-analyzer");
-	api=analyzer.getAPI(mkdbconfig.meta.config);
+	var api=analyzer.getAPI(mkdbconfig.meta.config);
 
-	xml4kdb=requireLocal("ksana-indexer").xml4kdb;
-	rawtags=requireLocal("ksana-indexer").rawtags;
+	var xml4kdb=requireLocal("ksana-indexer").xml4kdb;
+	var rawtags=requireLocal("ksana-indexer").rawtags;
+	var processTags=require("./puttag").processTags;
+
 	rawtags.init();
 
 	//mkdbconfig has a chance to overwrite API
 	if (mkdbconfig.meta && mkdbconfig.meta.normalize) {
 		api.setNormalizeTable(mkdbconfig.meta.normalize);
 	}
-	normalize=api["normalize"];
-	isSkip=api["isSkip"];
-	tokenize=api["tokenize"];
+
+	require("./puttag").init(api,session,status);
+	require("./putfile").init(api,session,status,xml4kdb,rawtags,processTags);
 
 	var folder=session.config.outdir||".";
 	session.kdbfn=require("path").resolve(folder, session.config.name+'.kdb');
 
+	if (mkdbconfig.paging) {
+		setupPaging(mkdbconfig.paging);
+	}
 	setTimeout(indexstep,1);
 }
+
 
 var start=function(mkdbconfig) {
 	if (indexing) return null;
@@ -381,15 +104,20 @@ var start=function(mkdbconfig) {
 	if (!mkdbconfig.files || !mkdbconfig.files.length) return null;//nothing to index
 
 	initIndexer(mkdbconfig);
+
   return status;
 }
 
+
 var indexstep=function() {
+	var putFile=require("./putfile").putFile;
+
+	session.config.callbacks=session.config.callbacks||{};
 	if (session.filenow<session.files.length) {
 		status.filename=session.files[session.filenow];
 		status.progress=session.filenow/session.files.length;
 		status.filenow=session.filenow;
-		if (session.config.callbacks && session.config.callbacks.onPrepareFile){
+		if (session.config.callbacks.onPrepareFile){
 			session.config.callbacks.onPrepareFile(status.filename,function(fn){
 				status.filename=fn;
 				putFile(status.filename,function(){
@@ -409,8 +137,8 @@ var indexstep=function() {
 			status.done=true;
 			indexing=false;
 			console.log("bytes written:",byteswritten)
-			if (session.config.finalized) {
-				session.config.finalized(session,status);
+			if (session.config.callbacks.finalized) {
+				session.config.callbacks.finalized(session,status);
 			}
 		});
 	}
@@ -474,10 +202,8 @@ var optimize4kdb=function(json) {
 		keys[keys.length]=[key,json.tokens[key]];
 	}
 	*/
-
-	if (!session.config.norawtag) {
+	if (!session.config.norawtag) {		
 		var rawtags=requireLocal("ksana-indexer").rawtags;
-		
 		var raw=rawtags.toJSON();
 		if (raw.tag.length) json.rawtag=raw;
 	}
@@ -512,10 +238,12 @@ var finalize=function(cb) {
 	if (!opts.size) opts.size=guessSize();
 	var kdbw =requireLocal("ksana-indexer").kdbw(session.kdbfn,opts);
 	//console.log(JSON.stringify(session.json,""," "));
-	if (session.config.finalizeField) {
+	if (session.config.callbacks.finalizeField) {
 		console.log("finalizing fields");
-		session.config.finalizeField(session.json.fields);
+		session.config.callbacks.finalizeField(session.json.fields);
 	}
+	if (session.config.paging) finalizePaging(session.config.paging,session.json.fields)
+
 	console.log("optimizing data structure");
 	var json=optimize4kdb(session.json);
 
