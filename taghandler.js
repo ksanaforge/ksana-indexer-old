@@ -24,4 +24,38 @@ var finalize_pb=function(fields){
 
 }
 
-module.exports={on_pb:on_pb,finalize_pb:finalize_pb};
+var on_head=function(text,tag,attributes,status){
+	return [{path:["pb"],value:attributes.n || attributes.id},
+		      {path:["pb_vpos"],value:status.vpos}
+		    ]
+}
+
+var finalize_head=function(fields) {
+
+}
+
+var on_hn=function(text,tag,attributes,status){
+	var depth=parseInt(tag.substr(2));
+	if (depth-hn_depth>1) {
+		console.log("file:"+status.filename+",tag:"+tag+",text:"+text);
+		throw "toc depth error"
+	}
+	hn_depth=depth;
+	return [{path:["hn"],value:text}
+		      ,{path:["hn_vpos"],value:status.vpos}
+		      ,{path:["hn_depth"],value:depth}
+		    ]
+}
+
+var finalize_hn=function(fields) { 
+
+}
+
+var init=function() {
+	hn_depth=0;
+	head_depth=0;
+}
+module.exports={init:init,on_pb:on_pb,finalize_pb:finalize_pb,
+	on_head:on_head,on_hn:on_hn,finalize_head:finalize_head,finalize_hn:finalize_hn};
+
+

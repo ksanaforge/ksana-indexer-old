@@ -52,21 +52,34 @@ var mergemixin=function(config){
 	//console.log(config,mixin);
 }
 var taghandler=require("./taghandler");
+
 var setupPaging=function(paging) {
-	if (typeof paging=="string") paging=[paging];
 	if (!session.config.captureTags) session.config.captureTags={};
-	for (var i=0;i<paging.length;i++) {
-		var handler=taghandler["on_"+paging[i]];
-		if (handler) session.config.captureTags[paging[i]]=handler;
-	}	
+	var handler=taghandler["on_"+paging];
+	if (handler) session.config.captureTags[paging]=handler;
 }
 var finalizePaging=function(paging,fields){
-	if (typeof paging=="string") paging=[paging];
-	for (var i=0;i<paging.length;i++) {
-		var handler=taghandler["finalize_"+paging[i]];
-		if (handler) handler(fields);
+	var handler=taghandler["finalize_"+paging];
+	if (handler) handler(fields);
+}
+var setupToc=function(toc) {
+	if (!session.config.captureTags) session.config.captureTags={};
+	var handler=taghandler["on_"+toc];
+	if (handler) {
+		if (toc==="hn") { //special case
+			for (var i=1;i<10;i++){
+				session.config.captureTags["h"+i]=handler;		
+			}
+		} else {
+			session.config.captureTags[toc]=handler;	
+		}
 	}
 }
+var finalizeToc=function(toc,fields){
+	var handler=taghandler["finalize_"+toc];
+	if (handler) handler(fields);
+}
+
 var initIndexer=function(mkdbconfig) {
 	session=initSession(mkdbconfig);
 
@@ -79,6 +92,7 @@ var initIndexer=function(mkdbconfig) {
 	var processTags=require("./puttag").processTags;
 
 	rawtags.init();
+	taghandler.init();
 
 	//mkdbconfig has a chance to overwrite API
 	if (mkdbconfig.meta && mkdbconfig.meta.normalize) {
@@ -93,6 +107,9 @@ var initIndexer=function(mkdbconfig) {
 
 	if (mkdbconfig.paging) {
 		setupPaging(mkdbconfig.paging);
+	}
+	if (mkdbconfig.toc) {
+		setupToc(mkdbconfig.toc);
 	}
 	setTimeout(indexstep,1);
 }
@@ -243,6 +260,7 @@ var finalize=function(cb) {
 		session.config.callbacks.finalizeField(session.json.fields);
 	}
 	if (session.config.paging) finalizePaging(session.config.paging,session.json.fields)
+	if (session.config.paging) finalizeToc(session.config.toc,session.json.fields)
 
 	console.log("optimizing data structure");
 	var json=optimize4kdb(session.json);
