@@ -105,11 +105,11 @@ var initIndexer=function(mkdbconfig) {
 	var folder=session.config.outdir||".";
 	session.kdbfn=require("path").resolve(folder, session.config.name+'.kdb');
 
-	if (mkdbconfig.paging) {
-		setupPaging(mkdbconfig.paging);
+	if (mkdbconfig.meta.paging) {
+		setupPaging(mkdbconfig.meta.paging);
 	}
-	if (mkdbconfig.toc) {
-		setupToc(mkdbconfig.toc);
+	if (mkdbconfig.meta.toc) {
+		setupToc(mkdbconfig.meta.toc);
 	}
 	setTimeout(indexstep,1);
 }
