@@ -55,27 +55,40 @@ var taghandler=require("./taghandler");
 
 var setupPaging=function(paging) {
 	if (!session.config.captureTags) session.config.captureTags={};
-	var handler=taghandler["on_"+paging];
-	if (handler) session.config.captureTags[paging]=handler;
+	var onhandler=taghandler["on_"+paging];
+	if (onhandler && !session.config.captureTags[paging]) {
+		session.config.captureTags[paging]=onhandler;
+	}
 }
 var finalizePaging=function(paging,fields){
+	var onhandler=taghandler["on_"+paging];
+	if (onhandler!=session.config.captureTags[paging]) return;
+
 	var handler=taghandler["finalize_"+paging];
 	if (handler) handler(fields);
 }
 var setupToc=function(toc) {
 	if (!session.config.captureTags) session.config.captureTags={};
-	var handler=taghandler["on_"+toc];
-	if (handler) {
+	var onhandler=taghandler["on_"+toc];
+	if (onhandler) {
 		if (toc==="hn") { //special case
 			for (var i=1;i<10;i++){
-				session.config.captureTags["h"+i]=handler;		
+				if (!session.config.captureTags["h"+1]) {
+					session.config.captureTags["h"+i]=handler;
+				}
 			}
 		} else {
-			session.config.captureTags[toc]=handler;	
+			if (!session.config.captureTags[toc]) {
+				session.config.captureTags[toc]=handler;	
+			}
 		}
 	}
 }
 var finalizeToc=function(toc,fields){
+	var onhandler=taghandler["on_"+toc];
+	if (onhandler!=session.config.captureTags[toc]) return;
+
+
 	var handler=taghandler["finalize_"+toc];
 	if (handler) handler(fields);
 }
@@ -131,7 +144,7 @@ var indexstep=function() {
 
 	session.config.callbacks=session.config.callbacks||{};
 	if (session.filenow<session.files.length) {
-		status.filename=session.files[session.filenow];
+		status.filename=session.files[session.filenow].trim();
 		status.progress=session.filenow/session.files.length;
 		status.filenow=session.filenow;
 		if (session.config.callbacks.onPrepareFile){
