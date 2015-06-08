@@ -74,12 +74,12 @@ var setupToc=function(toc) {
 		if (toc==="hn") { //special case
 			for (var i=1;i<10;i++){
 				if (!session.config.captureTags["h"+1]) {
-					session.config.captureTags["h"+i]=handler;
+					session.config.captureTags["h"+i]=onhandler;
 				}
 			}
 		} else {
 			if (!session.config.captureTags[toc]) {
-				session.config.captureTags[toc]=handler;	
+				session.config.captureTags[toc]=onhandler;	
 			}
 		}
 	}
