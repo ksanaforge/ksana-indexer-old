@@ -73,7 +73,7 @@ var setupToc=function(toc) {
 	if (onhandler) {
 		if (toc==="hn") { //special case
 			for (var i=1;i<10;i++){
-				if (!session.config.captureTags["h"+1]) {
+				if (!session.config.captureTags["h"+i]) {
 					session.config.captureTags["h"+i]=onhandler;
 				}
 			}
