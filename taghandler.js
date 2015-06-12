@@ -25,8 +25,8 @@ var finalize_pb=function(fields){
 }
 
 var on_head=function(text,tag,attributes,status){
-	return [{path:["pb"],value:attributes.n || attributes.id},
-		      {path:["pb_vpos"],value:status.vpos}
+	return [{path:["head"],value:attributes.t},
+		      {path:["head_vpos"],value:status.vpos}
 		    ]
 }
 
