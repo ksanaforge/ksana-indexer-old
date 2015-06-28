@@ -41,9 +41,12 @@ var on_hn=function(text,tag,attributes,status){
 		throw "toc depth error"
 	}
 	hn_depth=depth;
+	var tagname=tag.substr(1);
 	return [{path:["hn"],value:text}
 		      ,{path:["hn_vpos"],value:status.vpos}
 		      ,{path:["hn_depth"],value:depth}
+		      ,{path:[tagname+"_start"],value:status.vposstart}
+		      ,{path:[tagname+"_end"],value:status.vpos}
 		    ]
 }
 
