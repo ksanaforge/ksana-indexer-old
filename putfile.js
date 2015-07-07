@@ -5,6 +5,9 @@ var tokenize,normalize,isSkip;
 var isCSV=function(fn) {
 	return (fn.substr(fn.length-4).toLowerCase()===".csv") ;
 }
+var isTSV=function(fn) {
+	return (fn.substr(fn.length-4).toLowerCase()===".tsv") ;
+}
 var resolveTagsVpos=function(parsed) {
 	for (var i=0;i<parsed.tags.length;i++) {
 		for (var j=0;j<parsed.tags[i].length;j++) {
@@ -122,7 +125,7 @@ var putSegments=function(parsed,cb) { //25% faster than create a new document
 }
 var parseBody=function(body,segsep,cb) {
 	var res=xml4kdb.parseXML(body,
-		{segsep:segsep,maxsegsize:session.config.maxsegsize,trim:!!session.config.trim, csv:isCSV(status.filename)});
+		{segsep:segsep,maxsegsize:session.config.maxsegsize,trim:!!session.config.trim, csv:isCSV(status.filename), tsv:isTSV(status.filename)});
 	putSegments(res,cb);
 	status.segCount+=res.texts.length;//dnew.segCount;
 }

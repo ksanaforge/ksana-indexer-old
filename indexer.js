@@ -226,6 +226,8 @@ var buildpostingsLength=function(tokens,postings) {
 	return out;
 }
 var optimize4kdb=function(json) {
+	console.log('optimizing');
+
 	/*
 	var keys=[];
 	for (var key in json.tokens) {
@@ -235,7 +237,13 @@ var optimize4kdb=function(json) {
 	if (!session.config.norawtag) {		
 		var rawtags=requireLocal("ksana-indexer").rawtags;
 		var raw=rawtags.toJSON();
-		if (raw.tag.length) json.rawtag=raw;
+		if (raw.tag.length && raw.tag[0]) {
+			json.rawtag=raw; 
+			console.log(json.rawtag)
+		} else {
+			delete json.raw;
+			delete json.rawtag;
+		}
 	}
 
 	json.tokenids.sort(function(a,b){return a[1]-b[1]});//sort by token id

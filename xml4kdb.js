@@ -34,7 +34,11 @@ var parseSeg=function(segtext) {
 			}
 		}
 		tagoffset=off-totaltaglength;
-		tags.push([tagoffset , tag,attributes, 0 ]); //vpos to be resolved
+		if (tag) {
+			tags.push([tagoffset , tag,attributes, 0 ]); //vpos to be resolved	
+		} else {
+			console.log("warning empty tag ",segtext);
+		}
 		totaltaglength+=m.length;
 		return ""; //remove the tag from inscription
 	});
@@ -62,18 +66,41 @@ var emptypagename="_";
 
 var createSegsFromCSV=function(buf) {
 	var segs=[];
-	var lines=buf.replace(/\r\n/g,"\n").split("\n");
+	var lines=buf.trim().replace(/\r\n/g,"\n").split("\n");
 	for (var i=0;i<lines.length;i++) {
 		var L=lines[i].trim();
-		if (!L) continue;
+		if (!L) {
+			console.log("empty line",i);
+			continue;
+		}
 		L=L.replace(/\\n/g,"\n");
 		L=L.replace(/\\t/g,"\t");
 		var comma=L.indexOf(",");
 		if (comma==-1) {
-			throw "not a csv at line "+i;
-			return;
+			console.log("ignore line without comma",i);
+		} else{
+			segs.push([L.substr(0,comma),L.substr(comma+1)]);			
 		}
-		segs.push([L.substr(0,comma),L.substr(comma+1)]);
+	}
+	return segs;
+}
+var createSegsFromTSV=function(buf) {
+	var segs=[];
+	var lines=buf.trim().replace(/\r\n/g,"\n").split("\n");
+	for (var i=0;i<lines.length;i++) {
+		var L=lines[i].trim();
+		
+		if (!L) {
+			console.log("empty line",i);
+			continue;
+		}
+		L=L.replace(/\\n/g,"\n");
+		var tab=L.indexOf("\t");
+		if (tab==-1) {
+			console.log("ignore line without tab",i);
+		} else {
+			segs.push([L.substr(0,tab),L.substr(tab+1)]);	
+		}
 	}
 	return segs;
 }
@@ -101,8 +128,11 @@ var parseXML=function(buf, opts){
 	var sep=opts.segsep||defaultsep, sepTagname=sep;
 	var texts=[], tags=[];
 	var segs=null;
+
 	if (opts.csv) {
 		segs=createSegsFromCSV(buf);
+	} else if (opts.tsv) {
+		segs=createSegsFromTSV(buf);
 	} else {
 		segs=createSegsFromTag(buf,opts);
 	}
