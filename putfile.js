@@ -25,7 +25,7 @@ var putPosting=function(tk,vpos) {
 		out.postingcount++;
 		posting=out.postings[out.postingcount]=[];
 		session.json.tokens[tk]=out.postingcount;
-		session.json.tokenids.push([tk,out.postingcount]);
+		session.json._tokenids.push([tk,out.postingcount]);
 	} else {
 		posting=out.postings[postingid];
 	}
@@ -109,6 +109,13 @@ var putSegments=function(parsed,cb) { //25% faster than create a new document
 
 		var tovpos=putSegment(t.t);
 		parsed.tovpos[i]=tovpos;
+		if (!session.config.meta.uti) { //default uti to segname
+			if (typeof session.json._uti[t.n]!=="undefined") {
+				console.log("repeated id:",t.n,"in file:",status.filename);
+			}
+			session.json._uti[t.n]=session.json.segnames.length;
+		}
+
 		session.json.segnames.push(t.n);
 		session.json.segoffsets.push(session.vpos);
 	}

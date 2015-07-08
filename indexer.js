@@ -25,7 +25,8 @@ var initSession=function(config) {
 		,segnames:[]
 		,segoffsets:[]
 		,tokens:{}
-		,tokenids:[] //not in kdb
+		,_tokenids:[] //not in kdb
+		,_uti:{}  //not in kdb
 	};
 	config.inputEncoding=config.inputEncoding||"utf8";
 	var session={vpos:1, json:json , kdb:null, filenow:0,done:false
@@ -83,6 +84,23 @@ var setupToc=function(toc) {
 			}
 		}
 	}
+}
+
+var finalizeUTI=function() {
+	session.json.uti=[];
+	session.json.uti_idx=[];
+	var temp=[];
+	var _uti=session.json._uti;
+	for (var key in _uti) temp.push([key, _uti[key]]);
+
+	temp=temp.sort(function(a,b){return a[0]>b[0]?(a[0]===b[0]?0:1):-1 });
+
+	for (var i=0;i<temp.length;i++) {
+		session.json.uti.push(temp[i][0]);
+		session.json.uti_idx.push(temp[i][1]);
+	}
+
+	delete session.json._uti;
 }
 var finalizeToc=function(toc,fields){
 	var onhandler=taghandler["on_"+toc];
@@ -246,9 +264,9 @@ var optimize4kdb=function(json) {
 		}
 	}
 
-	json.tokenids.sort(function(a,b){return a[1]-b[1]});//sort by token id
-	var newtokens=json.tokenids.map(function(k){return k[0]});
-	delete json.tokenids;
+	json._tokenids.sort(function(a,b){return a[1]-b[1]});//sort by token id
+	var newtokens=json._tokenids.map(function(k){return k[0]});
+	delete json._tokenids;
 
 	json.tokens=newtokens;
 	for (var i=0;i<json.postings.length;i++) json.postings[i].sorted=true; //use delta format to save space
@@ -282,6 +300,7 @@ var finalize=function(cb) {
 	}
 	if (session.config.paging) finalizePaging(session.config.paging,session.json.fields)
 	if (session.config.paging) finalizeToc(session.config.toc,session.json.fields)
+	if (session.json._uti) finalizeUTI();
 
 	console.log("optimizing data structure");
 	var json=optimize4kdb(session.json);
