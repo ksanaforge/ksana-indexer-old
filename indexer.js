@@ -89,15 +89,22 @@ var setupToc=function(toc) {
 var finalizeUTI=function() {
 	session.json.uti=[];
 	session.json.uti_idx=[];
-	var temp=[];
+	session.json.uti_invert=[];
+	var temp=[],temp_invert=[];
 	var _uti=session.json._uti;
 	for (var key in _uti) temp.push([key, _uti[key]]);
 
 	temp=temp.sort(function(a,b){return a[0]>b[0]?(a[0]===b[0]?0:1):-1 });
-
+	
 	for (var i=0;i<temp.length;i++) {
 		session.json.uti.push(temp[i][0]);
 		session.json.uti_idx.push(temp[i][1]);
+		temp_invert.push([temp[i][1],i]);
+	}
+
+	temp_invert.sort(function(a,b){return a[0]-b[0]});
+	for (var i=0;i<temp_invert.length;i++){
+		session.json.uti_invert.push(temp_invert[i][1]);
 	}
 
 	delete session.json._uti;
