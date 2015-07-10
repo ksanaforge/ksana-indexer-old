@@ -101,6 +101,7 @@ var putSegments=function(parsed,cb) { //25% faster than create a new document
 	putFileInfo(filecontent);
 	for (var i=0;i<parsed.texts.length;i++) {
 		var t=parsed.texts[i];
+		session.json.segoffsets.push(session.vpos);
 		filecontent.push(t.t);
 
 		if (!session.config.norawtag && parsed.tags[i].length) {
@@ -115,9 +116,7 @@ var putSegments=function(parsed,cb) { //25% faster than create a new document
 			}
 			session.json._txtid[t.n]=session.json.segnames.length;
 		}
-
 		session.json.segnames.push(t.n);
-		session.json.segoffsets.push(session.vpos);
 	}
 	var lastfilecount=0;
 	if (session.json.filesegcount.length) lastfilecount=session.json.filesegcount[session.json.filesegcount.length-1];
