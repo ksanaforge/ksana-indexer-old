@@ -264,7 +264,6 @@ var optimize4kdb=function(json) {
 		var raw=rawtags.toJSON();
 		if (raw.tag.length && raw.tag[0]) {
 			json.rawtag=raw; 
-			console.log(json.rawtag)
 		} else {
 			delete json.raw;
 			delete json.rawtag;
