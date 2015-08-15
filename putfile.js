@@ -111,8 +111,12 @@ var putSegments=function(parsed,cb) { //25% faster than create a new document
 		var tovpos=putSegment(t.t);
 		parsed.tovpos[i]=tovpos;
 		if (!session.config.meta.txtid) { //default txtid to segname
-			if (typeof session.json._txtid[t.n]!=="undefined") {
-				console.log("repeated id:",t.n,"in file:",status.filename);
+			if (typeof session.json._txtid[t.n]!=="undefined") { //auto resolve duplicate id by appeding seq number
+				var seq=1;
+				while (typeof session.json._txtid[t.n+"_"+seq]!=="undefined") {
+					seq++;
+				}
+				t.n+="_"+seq;
 			}
 			session.json._txtid[t.n]=session.json.segnames.length;
 		}
