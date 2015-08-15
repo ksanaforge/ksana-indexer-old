@@ -137,11 +137,13 @@ var parseXML=function(buf, opts){
 		segs=createSegsFromTag(buf,opts);
 	}
 
-	segs.map(function(U,i){
+	segs.forEach(function(U,i){
 		var out=parseSeg(U[1]);
 		if (opts.trim) out.inscription=out.inscription.trim();
-		texts.push({n:U[0]||emptypagename,t:out.inscription});
-		tags.push(out.tags);
+		if (out.inscription) {
+			texts.push({n:U[0]||emptypagename,t:out.inscription});
+			tags.push(out.tags);
+		}
 	});
 	return {texts:texts,tags:tags,sep:sep,sepTagname:sepTagname};
 };
