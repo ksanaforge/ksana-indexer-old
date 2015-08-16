@@ -85,8 +85,8 @@ var setupToc=function(toc) {
 		}
 	}
 }
-
 var finalizeTxtID=function() {
+	/*
 	session.json.txtid=[];
 	session.json.txtid_idx=[];
 	session.json.txtid_invert=[];
@@ -106,9 +106,10 @@ var finalizeTxtID=function() {
 	for (var i=0;i<temp_invert.length;i++){
 		session.json.txtid_invert.push(temp_invert[i][1]);
 	}
-
+	*/
 	delete session.json._txtid;
 }
+
 var finalizeToc=function(toc,fields){
 	var onhandler=taghandler["on_"+toc];
 	if (onhandler!=session.config.captureTags[toc]) return;
