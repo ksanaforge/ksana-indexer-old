@@ -367,7 +367,7 @@ var Create=function(path,opts) {
 					saveInts(J,key,saveVInt);	
 				}
 			} else if (allstring_fast(J)) {
-				saveStringArray(J,key);
+				saveStringArray(J,key,J.enc);
 			} else {
 				openArray(key);
 				for (var i=0;i<J.length;i++) {

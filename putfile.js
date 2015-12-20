@@ -61,6 +61,7 @@ var putSegment=function(inscription) {
 			 session.vpos--;
 		} else {
 			var normalized=normalize(t);
+			var c=normalized.charCodeAt(0);
 			if (normalized) {
 				putPosting(normalized,session.vpos);
 				if (lastnormalized_vpos+1==session.vpos &&  lastnormalized && session.config.meta && session.config.meta.bigram) {
@@ -78,6 +79,7 @@ var putSegment=function(inscription) {
 }
 
 var shortFilename=function(fn) {
+	fn=fn.replace(/\\/g,'/');
 	var arr=fn.split('/');
 	while (arr.length>2) arr.shift();
 	return arr.join('/');
@@ -136,7 +138,9 @@ var putSegments=function(parsed,cb) { //25% faster than create a new document
 }
 var parseBody=function(body,segsep,cb) {
 	var res=xml4kdb.parseXML(body,
-		{segsep:segsep,maxsegsize:session.config.maxsegsize,trim:!!session.config.trim, csv:isCSV(status.filename), tsv:isTSV(status.filename)});
+		{segsep:segsep,maxsegsize:session.config.maxsegsize,
+			callbacks:session.config.callbacks||{},
+			trim:!!session.config.trim, csv:isCSV(status.filename), tsv:isTSV(status.filename)});
 	putSegments(res,cb);
 	status.segCount+=res.texts.length;//dnew.segCount;
 }

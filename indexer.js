@@ -85,30 +85,6 @@ var setupToc=function(toc) {
 		}
 	}
 }
-var finalizeTxtID=function() {
-	/*
-	session.json.txtid=[];
-	session.json.txtid_idx=[];
-	session.json.txtid_invert=[];
-	var temp=[],temp_invert=[];
-	var _txtid=session.json._txtid;
-	for (var key in _txtid) temp.push([key, _txtid[key]]);
-
-	temp=temp.sort(function(a,b){return a[0]>b[0]?(a[0]===b[0]?0:1):-1 });
-	
-	for (var i=0;i<temp.length;i++) {
-		session.json.txtid.push(temp[i][0]);
-		session.json.txtid_idx.push(temp[i][1]);
-		temp_invert.push([temp[i][1],i]);
-	}
-
-	temp_invert.sort(function(a,b){return a[0]-b[0]});
-	for (var i=0;i<temp_invert.length;i++){
-		session.json.txtid_invert.push(temp_invert[i][1]);
-	}
-	*/
-	delete session.json._txtid;
-}
 
 var finalizeToc=function(toc,fields){
 	var onhandler=taghandler["on_"+toc];
@@ -272,7 +248,15 @@ var optimize4kdb=function(json) {
 	}
 
 	json._tokenids.sort(function(a,b){return a[1]-b[1]});//sort by token id
-	var newtokens=json._tokenids.map(function(k){return k[0]});
+	var newtokens=[];
+	for (var i=0;i<json._tokenids.length;i++){
+		var tk=json._tokenids[i][0];
+		var code=tk.charCodeAt(0);
+		if (code>0xd900&&code<0xdc00) continue; //android cannot parse with U+F0000
+		newtokens.push(tk);
+	}
+	//var newtokens=json._tokenids.map(function(k){return k[0]});
+
 	delete json._tokenids;
 
 	json.tokens=newtokens;
@@ -305,9 +289,12 @@ var finalize=function(cb) {
 		console.log("finalizing fields");
 		session.config.callbacks.finalizeField(session.json.fields);
 	}
+	if (session.config.callbacks.finalizeJSON) {//low level beware
+		console.log("finalizing output JSON");
+		session.config.callbacks.finalizeJSON(session.json);
+	}
 	if (session.config.paging) finalizePaging(session.config.paging,session.json.fields)
 	if (session.config.paging) finalizeToc(session.config.toc,session.json.fields)
-	if (session.json._txtid) finalizeTxtID();
 
 	console.log("optimizing data structure");
 	var json=optimize4kdb(session.json);

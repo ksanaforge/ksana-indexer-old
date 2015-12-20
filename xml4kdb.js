@@ -141,7 +141,12 @@ var parseXML=function(buf, opts){
 		var out=parseSeg(U[1]);
 		if (opts.trim) out.inscription=out.inscription.trim();
 		if (out.inscription) {
-			texts.push({n:U[0]||emptypagename,t:out.inscription});
+			var segname=U[0]||emptypagename;
+			if(opts.callbacks&&opts.callbacks.onSegName) {
+				var r=opts.callbacks.onSegName(segname);
+				if (r && typeof r==="string") segname=r;
+			}
+			texts.push({n:segname,t:out.inscription});
 			tags.push(out.tags);
 		}
 	});
