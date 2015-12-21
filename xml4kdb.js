@@ -18,8 +18,12 @@ var parseXMLTag=function(s) {
 	if (!count) attr=undefined;
 	return {name:name,type:type,attr:attr};
 };
+var removeInvalidChar=function(text) {//android will crash
+	return text.replace(/[\uD900-\uDBFF][\uDC00-\uDFFF]/g,"??");
+}
 var parseSeg=function(segtext) {
 	// name,sunit, soff, eunit, eoff , attributes
+	segtext=removeInvalidChar(segtext);
 	var totaltaglength=0,tags=[],tagoffset=0;
 	var parsed=segtext.replace(/<(.*?)>/g,function(m,m1,off){
 		var i=m1.indexOf(" "),tag=m1,attributes="";
