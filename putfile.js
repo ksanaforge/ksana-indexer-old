@@ -1,4 +1,4 @@
-var session,status,xml4kdb,rawtags,processTags;
+var session,status,xml4kdb,rawtags,processTags,storeFields;
 var tokenize,normalize,isSkip;
 
 
@@ -164,7 +164,10 @@ var putFile=function(fn,cb) {
 	if (callbacks.beforeFile) {
 		texts=callbacks.beforeFile.apply(session,[texts,fn]);
 	}
-	if (callbacks.onFile) callbacks.onFile.apply(session,[fn,status]);
+	if (callbacks.onFile) {
+		var fields=callbacks.onFile.apply(session,[fn,status,session]);
+		fields && storeFields(fields,session.json);
+	}
 	else console.log("indexing",fn);
 
 	var start=bodystart ? texts.indexOf(bodystart) : 0 ;
@@ -202,7 +205,7 @@ var putFile=function(fn,cb) {
 	});
 }
 
-var init=function(api,_session,_status,_xml4kdb,_rawtags,_processTags){
+var init=function(api,_session,_status,_xml4kdb,_rawtags,_processTags,_storeFields){
 	session=_session;
 	status=_status;
 	xml4kdb=_xml4kdb;
@@ -212,6 +215,6 @@ var init=function(api,_session,_status,_xml4kdb,_rawtags,_processTags){
 	normalize=api["normalize"];
 	isSkip=api["isSkip"];
 	tokenize=api["tokenize"];
-
+	storeFields=_storeFields;
 }
 module.exports={putFile:putFile,init:init};

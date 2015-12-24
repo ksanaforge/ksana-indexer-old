@@ -94,6 +94,28 @@ var finalizeToc=function(toc,fields){
 	var handler=taghandler["finalize_"+toc];
 	if (handler) handler(fields);
 }
+var storeFields=function(fields,json) {
+	if (!json.fields) json.fields={};
+	var root=json.fields;
+	if (!(fields instanceof Array) ) fields=[fields];
+	var storeField=function(field) {
+		var path=field.path;
+		storepoint=root;
+		if (!(path instanceof Array)) path=[path];
+		for (var i=0;i<path.length;i++) {
+			if (!storepoint[path[i]]) {
+				if (i<path.length-1) storepoint[path[i]]={};
+				else storepoint[path[i]]=[];
+			}
+			storepoint=storepoint[path[i]];
+		}
+		if (typeof field.value=="undefined") {
+			throw "empty field value of ["+path+"] in file "+status.filename;
+		}
+		storepoint.push(field.value);
+	}
+	fields.map(storeField);
+}
 
 var initIndexer=function(mkdbconfig) {
 	session=initSession(mkdbconfig);
@@ -114,8 +136,8 @@ var initIndexer=function(mkdbconfig) {
 		api.setNormalizeTable(mkdbconfig.meta.normalize);
 	}
 
-	require("./puttag").init(api,session,status);
-	require("./putfile").init(api,session,status,xml4kdb,rawtags,processTags);
+	require("./puttag").init(api,session,status,storeFields);
+	require("./putfile").init(api,session,status,xml4kdb,rawtags,processTags,storeFields);
 
 	var folder=session.config.outdir||".";
 	session.kdbfn=require("path").resolve(folder, session.config.name+'.kdb');

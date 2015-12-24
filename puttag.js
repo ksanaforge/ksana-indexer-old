@@ -15,28 +15,6 @@ var parseAttributesString=function(s) {
 	s.replace(pat,function(m,m1,m2){if (!out[m1]) out[m1]=m2});
 	return out;
 }
-var storeFields=function(fields,json) {
-	if (!json.fields) json.fields={};
-	var root=json.fields;
-	if (!(fields instanceof Array) ) fields=[fields];
-	var storeField=function(field) {
-		var path=field.path;
-		storepoint=root;
-		if (!(path instanceof Array)) path=[path];
-		for (var i=0;i<path.length;i++) {
-			if (!storepoint[path[i]]) {
-				if (i<path.length-1) storepoint[path[i]]={};
-				else storepoint[path[i]]=[];
-			}
-			storepoint=storepoint[path[i]];
-		}
-		if (typeof field.value=="undefined") {
-			throw "empty field value of ["+path+"] in file "+status.filename;
-		}
-		storepoint.push(field.value);
-	}
-	fields.map(storeField);
-}
 
 
 var processTags=function(callbacks,captureTags,tags,texts) {
@@ -117,8 +95,9 @@ var processTags=function(callbacks,captureTags,tags,texts) {
 		}
 	}
 }
-var init=function(api,_session,_status){
+var init=function(api,_session,_status,_storeFields){
 	session=_session;
 	status=_status;
+	storeFields=_storeFields;
 }
 module.exports={processTags:processTags,init:init};
