@@ -258,6 +258,7 @@ var optimize4kdb=function(json) {
 	//var newtokens=json._tokenids.map(function(k){return k[0]});
 
 	delete json._tokenids;
+	delete json._txtid;
 
 	json.tokens=newtokens;
 	for (var i=0;i<json.postings.length;i++) json.postings[i].sorted=true; //use delta format to save space
