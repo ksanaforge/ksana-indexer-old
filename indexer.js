@@ -109,6 +109,10 @@ var storeFields=function(fields,json) {
 			}
 			storepoint=storepoint[path[i]];
 		}
+		if (!storepoint) {
+			console.log("empty storepoint",path,fields);
+			throw "empty storepoint!!";
+		}
 		if (typeof field.value=="undefined") {
 			throw "empty field value of ["+path+"] in file "+status.filename;
 		}

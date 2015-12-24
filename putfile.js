@@ -118,7 +118,7 @@ var putSegments=function(parsed,cb) { //25% faster than create a new document
 				while (typeof session.json._txtid[t.n+"@"+seq]!=="undefined") {
 					seq++;
 				}
-				console.log("repeated txtid",t.n,"changed to",t.n+"@"+seq);
+				console.log("\nrepeated txtid",t.n,"changed to",t.n+"@"+seq);
 				t.n+="@"+seq;
 			}
 			session.json._txtid[t.n]=session.json.segnames.length;
