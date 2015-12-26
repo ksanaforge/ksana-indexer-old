@@ -125,6 +125,7 @@ var initIndexer=function(mkdbconfig) {
 	session=initSession(mkdbconfig);
 
 	mergemixin(mkdbconfig);
+	
 	var analyzer=requireLocal("ksana-analyzer");
 	var api=analyzer.getAPI(mkdbconfig.meta.config);
 

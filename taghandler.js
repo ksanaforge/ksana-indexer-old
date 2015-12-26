@@ -23,10 +23,14 @@ var finalize_pb=function(fields){
 	}		
 
 }
-
+var on_title=function(text,tag,attributes,status){
+	return [{path:["title"],value:text},
+			{path:["title_vpos"],value:status.vposstart}
+		   ]
+}
 var on_head=function(text,tag,attributes,status){
 	return [{path:["head"],value:attributes.t},
-		      {path:["head_vpos"],value:status.vpos}
+			{path:["head_vpos"],value:status.vposstart}
 		    ]
 }
 
@@ -43,10 +47,8 @@ var on_hn=function(text,tag,attributes,status){
 	hn_depth=depth;
 	var tagname=tag.substr(1);
 	return [{path:["hn"],value:text}
-		      ,{path:["hn_vpos"],value:status.vpos}
+		      ,{path:["hn_vpos"],value:status.vposstart}
 		      ,{path:["hn_depth"],value:depth}
-		      ,{path:[tagname+"_start"],value:status.vposstart}
-		      ,{path:[tagname+"_end"],value:status.vpos}
 		    ]
 }
 
@@ -59,6 +61,6 @@ var init=function() {
 	head_depth=0;
 }
 module.exports={init:init,on_pb:on_pb,finalize_pb:finalize_pb,
-	on_head:on_head,on_hn:on_hn,finalize_head:finalize_head,finalize_hn:finalize_hn};
+on_title:on_title,	on_head:on_head,on_hn:on_hn,finalize_head:finalize_head,finalize_hn:finalize_hn};
 
 
