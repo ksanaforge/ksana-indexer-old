@@ -1,5 +1,3 @@
-var docx2xml=require("./docx2xml");
-
 var do_h0=function(text,tag,attributes,status) {
 	var res=[];
 	res=res.concat([
@@ -27,6 +25,7 @@ var captureTags={
 }
 var onPrepareFile=function(fn,cb) {
 	var xmlfn=fn.replace(".docx",".xml");
+	var docx2xml=require("./docx2xml");
 	docx2xml.convertfile(fn,function(content){
 		if (content) {
 			var h0=xmlfn.replace(".xml","");
