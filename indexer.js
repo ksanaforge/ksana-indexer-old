@@ -120,7 +120,7 @@ var storeFields=function(fields,json) {
 	}
 	fields.map(storeField);
 }
-
+status.storeFields=storeFields;
 var initIndexer=function(mkdbconfig) {
 	session=initSession(mkdbconfig);
 

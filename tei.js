@@ -22,6 +22,7 @@ var onopentag=function(e) {
 	context.parents.push(e);
 	context.now=e;	
 	context.path=context.paths.join("/");
+
 	if (!context.handler) {
 		var handler=context.handlers[context.path];
 		if (handler) {
@@ -49,7 +50,9 @@ var onclosetag=function(e) {
 		context.rootpath=null;
 		context.close_handler=null;//stop handling
 		context.text="";
+		//console.log(res,Object.keys(context.status),context.status.storeFields)
 		if (res && context.status.storeFields) {
+			//console.log("STORE")
 			context.status.storeFields(res, context.status.json);
 		}
 	} else if (context.close_handler) {
@@ -145,7 +148,7 @@ var parseP5=function(xml,parsed,fn,_config,_status) {
 	config=_config;
 	tagmodules=[];
 	context.addHandler=addHandler;
-	if (_config.setupHandlers) config.setupHandlers.apply(context);
+	if (config.setupHandlers) config.setupHandlers.apply(context);
 	if (config.callbacks && config.callbacks.beforeParseTag) {
 		xml=config.callbacks.beforeParseTag(xml);
 	}
