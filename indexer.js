@@ -29,7 +29,7 @@ var initSession=function(config) {
 		,_txtid:{}  //not in kdb
 	};
 	config.inputEncoding=config.inputEncoding||"utf8";
-	var session={vpos:1, json:json , kdb:null, filenow:0,done:false
+	var session={vpos:1, json:json , kdb:null, done:false
 		           ,indexedTextLength:0,config:config,files:config.files,segcount:0};
 	return session;
 }
@@ -160,10 +160,7 @@ var initIndexer=function(mkdbconfig) {
 var start=function(mkdbconfig) {
 	if (indexing) return null;
 	indexing=true;
-	if (!mkdbconfig.files || !mkdbconfig.files.length) return null;//nothing to index
-
 	initIndexer(mkdbconfig);
-
   return status;
 }
 
@@ -172,35 +169,33 @@ var indexstep=function() {
 	var putFile=require("./putfile").putFile;
 
 	session.config.callbacks=session.config.callbacks||{};
-	if (session.filenow<session.files.length) {
-		status.filename=session.files[session.filenow].trim();
-		status.progress=session.filenow/session.files.length;
-		status.filenow=session.filenow;
-		if (session.config.callbacks.onPrepareFile){
-			session.config.callbacks.onPrepareFile(status.filename,function(fn){
-				status.filename=fn;
-				putFile(status.filename,function(){
-					session.filenow++;
-					setTimeout(indexstep,1); //rest for 1 ms to response status
-				});
-			});
-		}else {
-			putFile(status.filename,function(){
-				session.filenow++;
+
+	session.config.next(null,function(err,res){
+		if (err) {
+			throw err;
+			return;
+		}
+
+		if (res) {
+			status.filename=res.filename;
+			status.progress=res.progress;
+			status.content=res.content;
+
+			putFile(status.filename,status.content,function(){
 				setTimeout(indexstep,1); //rest for 1 ms to response status
+			});
+		} else {
+			finalize(function(byteswritten) {
+				status.done=true;
+				indexing=false;
+				console.log("bytes written:",byteswritten)
+				if (session.config.callbacks.finalized) {
+					session.config.callbacks.finalized(session,status);
+				}
 			});
 		}
 
-	} else {
-		finalize(function(byteswritten) {
-			status.done=true;
-			indexing=false;
-			console.log("bytes written:",byteswritten)
-			if (session.config.callbacks.finalized) {
-				session.config.callbacks.finalized(session,status);
-			}
-		});
-	}
+	})
 }
 
 var getstatus=function() {
@@ -336,12 +331,17 @@ var finalize=function(cb) {
 	console.log("Writing file:",session.kdbfn);
 	kdbw.save(json,null,{autodelete:true});
 
-	kdbw.writeFile(session.kdbfn,function(total,written) {
-		status.progress=written/total;
-		status.outputfn=session.kdbfn;
-		if (total==written) {
-			cb(total);
-		}
-	});
+	if (session.config.noWrite) {
+		console.log("not writing to disk");
+		cb(0);
+	} else {
+		kdbw.writeFile(session.kdbfn,function(total,written) {
+			status.progress=written/total;
+			status.outputfn=session.kdbfn;
+			if (total==written) {
+				cb(total);
+			}
+		});
+	}
 }
 module.exports={start:start,stop:stop,status:getstatus};

@@ -1,3 +1,4 @@
+
 var outback = function (s) {
     while (s.length < 70) s += ' ';
     var l = s.length; 
@@ -21,6 +22,7 @@ var mkdbjs="mkdb.js";
 var starttime=0;
 var startindexer=function(mkdbconfig) {
   var indexer=require("./indexer");
+
   var session=indexer.start(mkdbconfig);
   if (!session) {
       console.log("No file to index");
@@ -49,21 +51,25 @@ var build=function(mkdbconfig){
   starttime=new Date();
   console.log("START",starttime);
   var glob = require("glob");
+  var preprocessor=require("./preprocessor");
+
+  if (typeof mkdbconfig.preprocessor==="function") preprocessor=mkdbconfig.preprocessor;
     
   if (typeof mkdbconfig.glob==="string") {
     if (mkdbconfig.glob.indexOf(".lst")===mkdbconfig.glob.length-4) {
-      mkdbconfig.files=fs.readFileSync(mkdbconfig.glob,"utf8")
+      var files=fs.readFileSync(mkdbconfig.glob,"utf8")
       .replace(/\r\n/g,"\n").replace(/\r/g,"\n").split("\n");
+      mkdbconfig.next=preprocessor(files.sort(),mkdbconfig);
       startindexer(mkdbconfig);
     } else {
       glob(mkdbconfig.glob, function (err, files) {
-        if (err) throw err;
-        mkdbconfig.files=files.sort();
+        mkdbconfig.next=preprocessor(files.sort(),mkdbconfig);
         startindexer(mkdbconfig);
       });          
     }
+
   } else {
-    mkdbconfig.files=mkdbconfig.glob;
+    mkdbconfig.next=preprocessor(mkdcbconfig.glob);
     startindexer(mkdbconfig);
   }
 }
