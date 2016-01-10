@@ -1,4 +1,3 @@
-var glob = require("glob");
 var createPreprocessor=function(files,config){
 	var fs=require("fs");
 	var now=0;
@@ -12,8 +11,11 @@ var createPreprocessor=function(files,config){
 
 		now++;
 		var content=fs.readFileSync(filename,config.inputEncoding).replace(/\r\n/g,"\n");
-		if (content.charCodeAt(0)==0xfeff) {//remove BOM
+		if (content.charCodeAt(0)==0xfeff) {
 			content=content.substring(1);
+		}
+		if (config.callbacks.onConvertFile) {
+			content=config.callbacks.onConvertFile(content,config);
 		}
 		cb(0,{filename:filename,content:content,progress:(now+1)/files.length});
 	}
