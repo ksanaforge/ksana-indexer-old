@@ -95,6 +95,19 @@ var putFileInfo=function(filecontent) {
 	//fileInfo.segOffset.push(session.vpos);
 }
 
+var resolveRepeatUti=function(uti) {
+	if (session.config.callbacks.onRepeatUti) {
+		uti=session.config.callbacks.onRepeatUti(uti,status);
+	}
+	if (session.json._txtid[uti]===undefined) return uti;
+	
+	var seq=1;
+	while (typeof session.json._txtid[uti+"@"+seq]!=="undefined") {
+			seq++;
+	}
+	console.log("\nrepeated txtid",uti,"changed to",uti+"@"+seq);
+	return uti+"@"+seq;		
+}
 var putSegments=function(parsed,cb) { //25% faster than create a new document
 	//var fileInfo={segnames:[],segOffset:[]};
 	var filecontent=[];
@@ -114,12 +127,7 @@ var putSegments=function(parsed,cb) { //25% faster than create a new document
 		parsed.tovpos[i]=tovpos;
 		if (!session.config.meta.txtid) { //default txtid to segname
 			if (typeof session.json._txtid[t.n]!=="undefined") { //auto resolve duplicate id by appeding seq number
-				var seq=1;
-				while (typeof session.json._txtid[t.n+"@"+seq]!=="undefined") {
-					seq++;
-				}
-				console.log("\nrepeated txtid",t.n,"changed to",t.n+"@"+seq);
-				t.n+="@"+seq;
+				t.n=resolveRepeatUti(t.n);
 			}
 			session.json._txtid[t.n]=session.json.segnames.length;
 		}
@@ -145,24 +153,15 @@ var parseBody=function(body,segsep,cb) {
 	status.segCount+=res.texts.length;//dnew.segCount;
 }
 
-var putFile=function(fn,cb) {
-	var fs=require("fs");
-	if (!fs.existsSync(fn)){
-		if (fn) console.warn("file ",fn,"doens't exist");
-		cb();
-		return;
-	}
-	var texts=fs.readFileSync(fn,session.config.inputEncoding).replace(/\r\n/g,"\n");
-	if (texts.charCodeAt(0)==0xfeff) {
-		texts=texts.substring(1);
-	}
+var putFile=function(fn,content,cb) {
+
 	var bodyend=session.config.bodyend;
 	var bodystart=session.config.bodystart;
 	var captureTags=session.config.captureTags;
 	var callbacks=session.config.callbacks||{};
 	var started=false,stopped=false;
 	if (callbacks.beforeFile) {
-		texts=callbacks.beforeFile.apply(session,[texts,fn]);
+		content=callbacks.beforeFile.apply(session,[content,fn]);
 	}
 	if (callbacks.onFile) {
 		var fields=callbacks.onFile.apply(session,[fn,status,session]);
@@ -170,21 +169,21 @@ var putFile=function(fn,cb) {
 	}
 	else console.log("indexing",fn);
 
-	var start=bodystart ? texts.indexOf(bodystart) : 0 ;
-	var end=bodyend? texts.indexOf(bodyend): texts.length;
+	var start=bodystart ? content.indexOf(bodystart) : 0 ;
+	var end=bodyend? content.indexOf(bodyend): content.length;
 	if (!bodyend) bodyendlen=0;
 	else bodyendlen=bodyend.length;
 	//assert.equal(end>start,true);
 
 	// split source xml into 3 parts, before <body> , inside <body></body> , and after </body>
-	var body=texts.substring(start,end+bodyendlen);
+	var body=content.substring(start,end+bodyendlen);
 	status.json=session.json;
 
 	status.bodytext=body;
-	status.starttext=texts.substring(0,start);
+	status.starttext=content.substring(0,start);
 	status.fileStartVpos=session.vpos;
 
-	if (callbacks.beforebodystart) callbacks.beforebodystart.apply(session,[texts.substring(0,start),status]);
+	if (callbacks.beforebodystart) callbacks.beforebodystart.apply(session,[content.substring(0,start),status]);
 	
 	parseBody(body,session.config.segsep,function(parsed){
 		status.parsed=parsed;
@@ -193,7 +192,7 @@ var putFile=function(fn,cb) {
 			processTags(callbacks,captureTags, parsed.tags, parsed.texts);
 		}
 		var ending="";
-		if (bodyend) ending=texts.substring(end+bodyend.length);
+		if (bodyend) ending=content.substring(end+bodyend.length);
 		if (ending && callbacks.afterbodyend) {
 			callbacks.afterbodyend.apply(session,[ending,status]);
 		}
