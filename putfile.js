@@ -89,6 +89,8 @@ var putFileInfo=function(filecontent) {
 	var shortfn=shortFilename(status.filename);
 	//session.json.files.push(fileInfo);
 	//empty or first line empty
+	filecontent.normalArray=true;//prevent loading entire file
+
 	session.json.filecontents.push(filecontent);
 	session.json.filenames.push(shortfn);
 	session.json.fileoffsets.push(session.vpos);

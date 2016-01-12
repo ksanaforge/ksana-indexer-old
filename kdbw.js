@@ -318,6 +318,7 @@ var Create=function(path,opts) {
 		return false;
 	}
 	var allstring_fast=function(arr) {
+		if (arr.normalArray) return false;
 		if (arr.length<5) return allstring(arr);
 		if (typeof arr[0]=='string') return true;
 		return false;
