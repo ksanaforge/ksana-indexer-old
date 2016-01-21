@@ -58,7 +58,12 @@ var build=function(mkdbconfig){
   if (typeof mkdbconfig.glob==="string") {
     if (mkdbconfig.glob.indexOf(".lst")===mkdbconfig.glob.length-4) {
       var files=fs.readFileSync(mkdbconfig.glob,"utf8")
-      .replace(/\r\n/g,"\n").replace(/\r/g,"\n").split("\n");
+      .replace(/\r\n/g,"\n").replace(/\r/g,"\n");
+      if (files.charCodeAt(0) === 0xFEFF) {
+        files=files.slice(1);
+      }
+      files=files.split("\n");
+
       mkdbconfig.next=preprocessor(files.sort(),mkdbconfig);
       startindexer(mkdbconfig);
     } else {
