@@ -1,6 +1,6 @@
 {
   "name": "ksana-indexer",
-  "version": "1.5.4",
+  "version": "1.5.5",
   "description": "create file for ksana search",
   "main": "index.js",
   "scripts": {

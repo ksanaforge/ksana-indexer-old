@@ -283,10 +283,9 @@ var optimize4kdb=function(json) {
 	delete json._tokenids;
 	delete json._txtid;
 
-	for (var i=0;i<json.fields.length;i++) {
-		var f=json.fields[i];
+	for (var f in json.fields) {
 		if (f.substr(f.length-5)==="_vpos") {
-			json.fields[i].sorted=true;
+			json.fields[f].sorted=true;
 		}
 	}
 
