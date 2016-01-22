@@ -235,6 +235,7 @@ var createMeta=function() {
 	meta.segcount=status.segCount;
 	meta.version=Date.now().toString();
 	meta.builddate=(new Date()).toString();
+	meta.indexer=10;
 	return meta;
 }
 var guessSize=function() {
