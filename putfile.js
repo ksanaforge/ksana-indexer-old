@@ -149,8 +149,7 @@ var putSegments=function(parsed,cb) { //25% faster than create a new document
 var parseBody=function(body,segsep,cb) {
 	var res=xml4kdb.parseXML(body,
 		{segsep:segsep,maxsegsize:session.config.maxsegsize,
-			callbacks:session.config.callbacks||{},
-			trim:!!session.config.trim, csv:isCSV(status.filename), tsv:isTSV(status.filename)});
+			callbacks:session.config.callbacks||{},csv:isCSV(status.filename), tsv:isTSV(status.filename)});
 	putSegments(res,cb);
 	status.segCount+=res.texts.length;//dnew.segCount;
 }
