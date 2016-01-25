@@ -143,7 +143,6 @@ var parseXML=function(buf, opts){
 
 	segs.forEach(function(U,i){
 		var out=parseSeg(U[1]);
-		if (opts.trim) out.inscription=out.inscription.trim();
 		if (out.inscription) {
 			var segname=U[0]||emptypagename;
 			if(opts.callbacks&&opts.callbacks.onSegName) {
